@@ -436,7 +436,15 @@ static void *connection_acceptor(ftp_listener_t *f)
                     other thread will eventually finish and release
                     its resources.  We have this problem ever few week
                     on the ftp.gnupg.org site. */
-                 if (errno != EMFILE)
+                 if (errno == EMFILE) {
+                     /* Wait a bit. */
+                     struct timeval tv;
+
+                     tv.tv_sec = 10;
+                     tv.tv_usec = 0;
+                     select(0, NULL, NULL, NULL, &tv);
+                 }
+                 else
                      ++num_error;
              }
              if (num_error >= MAX_ACCEPT_ERROR) {
