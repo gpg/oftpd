@@ -24,17 +24,14 @@
 
 /* put our executable name here where everybody can see it */
 static const char *exe_name = "oftpd";
-static int log_facility;
 
 int pasv_port_low = 1024;
 int pasv_port_high = MAX_PORT;
 
-/* This is used by the reopen_syslog_hack. */
 static int my_syslog_fd = -1;
 
 static void daemonize();
 static void print_usage(const char *error);
-static void init_syslog_hack (void);
 
 int main(int argc, char *argv[])
 {
@@ -57,6 +54,8 @@ int main(int argc, char *argv[])
     ftp_listener_t ftp_listener;
 
     int detach;
+
+    int log_facility;
 
     sigset_t term_signal;
     int sig;
@@ -238,7 +237,6 @@ int main(int argc, char *argv[])
     /* log the start time */
     openlog(NULL, LOG_NDELAY, log_facility);
     syslog(LOG_INFO,"Starting, version %s, as PID %d", VERSION, getpid());
-    init_syslog_hack ();
 
     /* change to root directory */
     if (chroot(dir_ptr) != 0) {
@@ -250,6 +248,25 @@ int main(int argc, char *argv[])
         syslog(LOG_ERR, "error changing directory; %s\n", strerror(errno));
         exit(1);
     }
+
+    /* Check that a /dev directory exists, so that syslog works
+       properly even after a syslogd restart. */
+    {
+      struct stat stat_buf;
+
+      if (stat( "/dev", &stat_buf)) {
+        syslog (LOG_ERR, "required `%s/dev' directory is missing: %s\n",
+                dir_ptr, strerror (errno));
+      }
+#ifndef STATS_MACRO_BROKEN
+      if (!S_ISDIR(stat_buf.st_mode)) {
+#else
+      if (S_ISDIR(stat_buf.st_mode)) {
+#endif
+          syslog (LOG_ERR, "`%s/dev' is not a directory\n", dir_ptr);
+      }
+    }
+
 
     /* create our main listener */
     if (!ftp_listener_init(&ftp_listener, 
@@ -381,61 +398,3 @@ static void daemonize()
     }
 }
 
-
-/* Figure out the syslog fd and store it away. */
-static void init_syslog_hack ()
-{
-    struct sockaddr_un addr;
-    socklen_t len;
-    int fd;
-
-    my_syslog_fd = -1;
-    /* We know that stdin, stdout and stderr are connected to
-     * /dev/null, so we can start with 3.  FIXME: We should use a
-     * POSIX thing to figure out the highest possible fd. */
-    for (fd=3; fd < 1024; fd++) {
-        len = sizeof addr;
-        if (!getsockname (fd, (struct sockaddr*)&addr, &len)) {
-            if (addr.sun_family == PF_LOCAL) {
-                /* Found a unix domain socket.  This is what we were
-                 * looking for. */
-                my_syslog_fd = fd;
-                syslog(LOG_INFO,"Found my syslog file descriptor (%d).", fd);
-                return;
-            }
-        }
-    }
-}
-
-
-void reopen_syslog_hack (int fd)
-{
-    if (fd < 0)
-        return;
-    if (my_syslog_fd == -1)
-        return; /* not initialized, so we can't use the hack. */
-    if (fd == my_syslog_fd) {
-        ; /* We lost the fd in the meantime, otherwise the next
-           * file descriptor should not get this fd. */
-    }
-    else {
-      struct sockaddr_un addr;
-      socklen_t len = sizeof addr;
-
-      if (!getsockname (my_syslog_fd, (struct sockaddr*)&addr, &len)) 
-        if (addr.sun_family == PF_LOCAL) 
-          return;   /* Okay, this is still a unix domain socket, so
-                       everything seems to be fine. */
-    }
-
-    my_syslog_fd = -1;
-    /* fixme: If we would employ a syslog() wrapper and use a lock
-     * there we could easily avoid to lose messages.  But OTOH, this
-     * is just a glibc fix, so we will live with that.  Anyway, we can
-     * detect a lost syslog file descriptor only after an open or
-     * socket call - so it does not matter at all. */
-    openlog(NULL, LOG_NDELAY, log_facility);
-    syslog(LOG_INFO,"Redone the openlog call to fix a glibc bug."
-                    "Some messages might have been lost.");
-    init_syslog_hack ();
-}

@@ -178,7 +178,6 @@ int ftp_listener_init(ftp_listener_t *f,
 
     /* okay, finally do some socket manipulation */
     fd = socket(AF_INET, SOCK_STREAM, 0);
-    reopen_syslog_hack (fd);
     if (fd == -1) {
         error_init(err, errno, "error creating socket; %s", strerror(errno));
         return 0;
@@ -358,7 +357,6 @@ static void *connection_acceptor(ftp_listener_t *f)
          /* otherwise accept our pending connection (if any) */
          addr_len = sizeof(sockaddr_storage_t);
          fd = accept(f->fd, (struct sockaddr *)&client_addr, &addr_len);
-         reopen_syslog_hack (fd);
          if (fd >= 0) {
 
              tcp_nodelay = 1;

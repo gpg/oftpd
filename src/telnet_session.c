@@ -534,7 +534,6 @@ int main()
 
     signal(SIGPIPE, SIG_IGN);
     while ((newfd = accept(fd, &newaddr, &newaddrlen)) >= 0) {
-        reopen_syslog_hack (newfd);
         telnet_session_init(&t, newfd, newfd);
         telnet_session_print(&t, "Password:");
         telnet_session_readln(&t, buf, sizeof(buf));

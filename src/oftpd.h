@@ -29,9 +29,5 @@
 #define README_FILE_NAME "README"
 
 
-/*-- oftpd.c --*/
-void reopen_syslog_hack (int fd);
-
-
 #endif /* OFTPD_H */
 

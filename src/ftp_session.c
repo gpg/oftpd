@@ -569,9 +569,11 @@ static void change_dir(ftp_session_t *f, const char *new_dir)
 	}
     }
 
-    /* see if this is a directory we can change into */
+    /* see if this is a directory we can change into.  We don't allow
+       /dev as usual. */
     dir_okay = 0;
-    if (stat(target, &stat_buf) == 0) {
+    if (!(!strncmp (target, "/dev", 4) && (!target[4] || target[4] == '/'))
+        && stat(target, &stat_buf) == 0) {
 #ifndef STAT_MACROS_BROKEN
         if (!S_ISDIR(stat_buf.st_mode)) {
 #else
@@ -726,7 +728,6 @@ static int set_pasv(ftp_session_t *f, sockaddr_storage_t *bind_addr)
     daemon_assert(bind_addr != NULL);
 
     socket_fd = socket(SSFAM(bind_addr), SOCK_STREAM, 0);
-    reopen_syslog_hack (socket_fd);
     if (socket_fd == -1) {
         reply(f, 500, "Error creating server socket; %s.", strerror(errno));
 	return -1;
@@ -1097,10 +1098,14 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     /* create an absolute name for our file */
     file_name = cmd->arg[0].string;
     get_absolute_fname(full_path, sizeof(full_path), f->dir, file_name);
-
     /* open file */
-    file_fd = open(full_path, O_RDONLY);
-    reopen_syslog_hack (file_fd);
+    if (!strncmp (full_path, "/dev", 4)
+        && (!full_path[4] || full_path[4] == '/')) {
+      file_fd = -1;
+      errno = ENOENT;
+    }
+    else
+      file_fd = open(full_path, O_RDONLY);
     if (file_fd == -1) {
         reply(f, 550, "Error opening file; %s.", strerror(errno));
 	goto exit_retr;
@@ -1291,7 +1296,6 @@ static int open_connection(ftp_session_t *f)
 
     if (f->data_channel == DATA_PORT) {
         socket_fd = socket(SSFAM(&f->data_port), SOCK_STREAM, 0);
-        reopen_syslog_hack (socket_fd);
 	if (socket_fd == -1) {
 	    reply(f, 425, "Error creating socket; %s.", strerror(errno));
 	    return -1;
@@ -1308,7 +1312,6 @@ static int open_connection(ftp_session_t *f)
 
         addr_len = sizeof(struct sockaddr_in);
         socket_fd = accept(f->server_fd, (struct sockaddr *)&addr, &addr_len);
-        reopen_syslog_hack (socket_fd);
 	if (socket_fd == -1) {
 	    reply(f, 425, "Error accepting connection; %s.", strerror(errno));
 	    return -1;
@@ -1639,9 +1642,13 @@ static void do_size(ftp_session_t *f, const ftp_command_t *cmd)
         /* create an absolute name for our file */
         file_name = cmd->arg[0].string;
         get_absolute_fname(full_path, sizeof(full_path), f->dir, file_name);
-
         /* get the file information */
-        if (stat(full_path, &stat_buf) != 0) {
+        if (!strncmp (full_path, "/dev", 4)
+            && (!full_path[4] || full_path[4] == '/')) {
+            errno = ENOENT;
+            reply(f, 550, "Error getting file status; %s.", strerror(errno));
+        }
+        else if (stat(full_path, &stat_buf) != 0) {
             reply(f, 550, "Error getting file status; %s.", strerror(errno));
         } else {
             /* output the size */
@@ -1687,7 +1694,12 @@ static void do_mdtm(ftp_session_t *f, const ftp_command_t *cmd)
     get_absolute_fname(full_path, sizeof(full_path), f->dir, file_name);
 
     /* get the file information */
-    if (stat(full_path, &stat_buf) != 0) {
+    if (!strncmp (full_path, "/dev", 4)
+        && (!full_path[4] || full_path[4] == '/')) {
+        errno = ENOENT;
+        reply(f, 550, "Error getting file status; %s.", strerror(errno));
+    }
+    else if (stat(full_path, &stat_buf) != 0) {
         reply(f, 550, "Error getting file status; %s.", strerror(errno));
     } else {
         gmtime_r(&stat_buf.st_mtime, &mtime);
@@ -1733,7 +1745,6 @@ static void send_readme(const ftp_session_t *f, int code)
 
     /* open our file */
     fd = open(file_name, O_RDONLY);
-    reopen_syslog_hack (fd);
     if (fd == -1) {
         goto exit_send_readme;
     }

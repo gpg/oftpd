@@ -1,3 +1,11 @@
+2003-08-13 <wk@gnupg.org>
+
+  Print a warning if the /dev direcory does no exists below the
+  chroot.  It is required so that a syslogd restart won't harm.
+  Ignore the /dev directory in the ftp session.
+
+  Fixed some minor problems.
+
 2000-12-13
 
   IPv6 code is maintained by Mauro Tortonesi <mauro@ferrara.linux.it>.

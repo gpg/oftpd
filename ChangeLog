@@ -1,3 +1,23 @@
+2003-08-13  Werner Koch  <wk@gnupg.org>
+
+	
+	* src/oftpd.c (reopen_syslog_hack): Removed.
+	(init_syslog_hack): Removed.  That was a whole stupid thing by me
+	as I didn'd realized that we are running chroot and so the
+	/dev/log socket could not be reopened by libc.
+	(main): Print a warning if there is no /dev directory below the
+	chroot.
+
+	* src/file_list.c (file_nlst,file_list): Don't list "/dev".
+	* src/ftp_session.c (change_dir, do_retr)
+	(do_size, do_mdtm): Likewise.
+
+2003-08-12  Werner Koch  <wk@gnupg.org>
+
+	* src/oftpd.c (reopen_syslog_hack): Simply comparing the fd is not
+	enough due to race conditions.  So always check whether the syslog
+	fd is still bound to a unix domain socket.
+
 2003-08-09  Werner Koch  <wk@gnupg.org>
 
 	* src/oftpd.c (main): Give LOG_FACILITY file scope.

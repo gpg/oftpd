@@ -106,6 +106,9 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
 	return 0;
     }
     strcat(pattern, filespec);
+    if ( !strncmp (pattern, "/dev", 4)
+         && (!pattern[4] || pattern[4] == '/'))
+      return 1; /* ignore /dev */
 
     /* do a glob() */
     memset(&glob_buf, 0, sizeof(glob_buf));
@@ -131,8 +134,11 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
     /* print our results */
     for (i=0; i<glob_buf.gl_pathc; i++) {
         file_name = glob_buf.gl_pathv[i];
+        if ( !strncmp (file_name, "/dev", 4)
+             && (!file_name[4] || file_name[4] == '/'))
+          continue; /* ignore /dev */
 	if (memcmp(file_name, pattern, dir_len) == 0) {
-	    file_name += dir_len;
+          file_name += dir_len;
 	}
 	fdprintf(out, "%s\r\n", file_name);
     }
@@ -194,6 +200,10 @@ int file_list(int out, const char *cur_dir, const char *filespec)
 	return 0;
     }
     strcat(pattern, filespec);
+    if ( !strncmp (pattern, "/dev", 4)
+         && (!pattern[4] || pattern[4] == '/'))
+      return 1; /* ignore /dev */
+
 
     /* do a glob() */
     memset(&glob_buf, 0, sizeof(glob_buf));
@@ -233,6 +243,9 @@ int file_list(int out, const char *cur_dir, const char *filespec)
     total_blocks = 0;
     for (i=0; i<glob_buf.gl_pathc; i++) {
         file_name = glob_buf.gl_pathv[i];
+        if ( !strncmp (file_name, "/dev", 4)
+             && (!file_name[4] || file_name[4] == '/'))
+          continue;
 	if (memcmp(file_name, pattern, dir_len) == 0) {
 	    file_name += dir_len;
 	}
