@@ -1,6 +1,9 @@
 2003-08-13 <wk@gnupg.org>
 
-  Print a warning if the /dev direcory does no exists below the
+  New option -r, --pasv-range to limit the range for passive ports to
+  specific firewall rules.
+
+  Print a warning if the /dev directory does not exists below the
   chroot.  It is required so that a syslogd restart won't harm.
   Ignore the /dev directory in the ftp session.
 
