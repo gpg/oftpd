@@ -596,7 +596,7 @@ static const char *parse_number(int *num, const char *s, int max_num)
         cur_digit = (*s - '0');
 
         /* check for overflow */
-        if ((max_num - cur_digit) < tmp) {
+        if ((max_num - cur_digit) < (tmp*10)) {
 	    return NULL;
 	}
 
