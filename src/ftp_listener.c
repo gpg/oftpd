@@ -431,7 +431,13 @@ static void *connection_acceptor(ftp_listener_t *f)
                  syslog(LOG_WARNING, 
                      "error accepting FTP connection; %s", 
                      strerror(errno));
-                 ++num_error;
+                 /* We don't bump the error counter if we are merely
+                    out of file descriptors.  The hope is that some
+                    other thread will eventually finish and release
+                    its resources.  We have this problem ever few week
+                    on the ftp.gnupg.org site. */
+                 if (errno != EMFILE)
+                     ++num_error;
              }
              if (num_error >= MAX_ACCEPT_ERROR) {
                  syslog(LOG_ERR, 

@@ -1,3 +1,8 @@
+2004-01-12  Werner Koch  <wk@gnupg.org>
+
+	* src/ftp_listener.c (connection_acceptor): Don't increase the
+	error counter for EMFILE conditions.
+
 2003-08-13  Werner Koch  <wk@gnupg.org>
 
 	
