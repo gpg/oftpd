@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+#DEBHELPER#
+
+CONFFILE=/etc/default/oftpd
+
+if [ $1 == "purge" ]; then
+	update-rc.d oftpd remove >/dev/null 2>/dev/null
+	rm -f "$CONFFILE"
+fi
+
+exit 0;
+

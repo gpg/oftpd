@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+#DEBHELPER#
+
+
+if [ \( "$1" = "upgrade" -o "$1" = "remove" \) ]; then
+	/etc/init.d/oftpd stop	
+fi
+
+	

@@ -1,0 +1,89 @@
+#!/bin/sh
+set -e
+. /usr/share/debconf/confmodule
+
+CONFFILE=/etc/default/oftpd
+LOGFILE=/var/log/oftpd.log
+TMPFILE=$(tempfile)
+
+#DEBHELPER#
+
+update_value() {
+	if [ -e "$CONFFILE" ]; then
+		if [ $(grep -c "$1" "$CONFFILE") = "0" ]; then
+			echo "$1=\"$2\"" >> $CONFFILE
+		else
+			TMPVAL=$(echo $2 | sed -e "s/\\//\\\\\\//g")
+			sed -e "s/$1=.*/$1=\"$TMPVAL\"/" < $CONFFILE > $TMPFILE
+			mv -f $TMPFILE $CONFFILE
+		fi
+	else
+		echo "$1=\"$2\"" >> $TMPFILE
+	fi
+}
+
+
+if [ "$1" = "configure" ]; then
+	update-inetd --disable ftp || true
+	
+	update-rc.d oftpd defaults > /dev/null 2>/dev/null
+
+	/etc/init.d/oftpd stop
+
+#	. $CONFFILE
+
+	db_get oftpd/enable_oftpd
+	if [ "$RET" = "true" ]; then
+		update_value "ENABLE" "yes"
+		db_get oftpd/which_user
+		if [ -z "$RET" -o "$RET" = "oftpd" ]; then
+			USER_TEST=$(cut -d ':' -f 1 < /etc/passwd | grep -w oftpd) || true
+			if [ -z "$USER_TEST" ]; then
+				adduser --system oftpd
+			fi
+			update_value "USER" "oftpd"
+		else
+			update_value "USER" "$RET"
+		fi
+		db_get oftpd/which_dir
+		if [ -z "$RET" ]; then
+			update_value "DIR" "/home/oftpd"
+		else
+			update_value "DIR" "$RET"
+		fi
+		db_get oftpd/which_port
+		if [ -n "$RET" ]; then
+			update_value "PORT" "$RET"
+		else
+			update_value "PORT" "21"
+		fi
+		db_get oftpd/which_iface
+		if [ -n "$RET" ]; then
+			update_value "IFACE" "$RET"
+		else
+			update_value "IFACE" "0.0.0.0"
+		fi
+		db_get oftpd/max_conn
+		if [ -n "$RET" ]; then
+			update_value "MAXCON" "$RET"
+		else
+			update_value "MAXCON" "250"
+		fi
+
+	else
+		update_value "ENABLE" "no"
+		db_get oftpd/which_user
+		update_value "USER" "$RET"
+		db_get oftpd/which_dir
+		update_value "DIR" "$RET"
+	fi
+	
+	if [ ! -e "$CONFFILE" ]; then
+		mv -f $TMPFILE $CONFFILE
+	fi
+
+	/etc/init.d/oftpd start
+
+fi
+
+exit 0;

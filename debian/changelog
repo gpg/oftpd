@@ -1,0 +1,113 @@
+oftpd (0.3.6-5) unstable; urgency=low
+
+  * Priority overridden to extra; changed control file to concur.
+  * Fixed lintian error: depends on debconf >= 0.5.00 now
+  * /etc/default/oftpd no longer distributed with .deb
+  * Extra special care now taken to ensure that the sysadmin can modify
+    the file, without debconf, and have changes preserved. (Closes: #132169)
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Sun,  3 Feb 2002 16:48:05 -0500
+
+oftpd (0.3.6-4) unstable; urgency=low
+
+  * Fixed error in templates, the default directory should now be /home/oftpd
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Fri, 21 Sep 2001 19:44:29 -0400
+
+oftpd (0.3.6-3) unstable; urgency=low
+
+  * Removed /etc/default/oftpd from conffiles, because it is really isn't one.
+  * Now disables FTP service from inetd, in the postinst. (Closes: #107508)
+  * Updated Standards-Version to 3.5.6.0
+  * Uses 'oftpd' user by default, will create it if it does not exist.
+    Will not allow you to choose a user that does not exist.
+    (Closes: #107507)
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Fri,  3 Aug 2001 22:21:38 -0400
+
+oftpd (0.3.6-2) unstable; urgency=low
+
+  * Removed Build-Dependency on libc6-dev
+  * Modified logging template message to mention other sysloggers.
+  * Updated Standards-Version
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Tue, 10 Jul 2001 09:44:20 -0400
+
+oftpd (0.3.6-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated Standards Version
+  * Added debconf note about setting up FTP syslog facility
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Thu, 31 May 2001 23:51:12 -0400
+
+oftpd (0.3.5-1) unstable; urgency=low
+
+  * New upstream release
+  * Upload sponsored by Lenart Janos <ocsi@debian.org>.
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Wed, 18 Apr 2001 20:29:04 -0400
+
+oftpd (0.3.4-2) unstable; urgency=low
+
+  * Moved oftpd.conf to /etc/default
+  * Added dependency on sysklogd | system-log-daemon
+  * Upload sponsored by Lenart Janos <ocsi@debian.org>.
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Tue, 17 Apr 2001 19:36:16 -0400
+
+oftpd (0.3.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Included new upstream man page
+  * Upload sponsored by Lenart Janos <ocsi@debian.org>.
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Mon,  9 Apr 2001 10:07:05 -0400
+
+oftpd (0.3.3-1) unstable; urgency=low
+
+  * New upstream release
+  * Moved oftpd to /usr/sbin 
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Thu, 29 Mar 2001 22:18:18 -0500
+
+oftpd (0.3.2-1) unstable; urgency=low
+
+  * New upstream release
+  * Patched against ss_family bug
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Tue, 27 Mar 2001 14:21:05 -0500
+
+oftpd (0.3.1-3) unstable; urgency=low
+
+  * Updated Standards-Version
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Sun, 25 Mar 2001 23:07:00 -0500
+
+oftpd (0.3.1-2) unstable; urgency=low
+
+  * Added new options to debconf script
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Sun, 25 Mar 2001 21:29:21 -0500
+
+oftpd (0.3.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Fri, 23 Mar 2001 00:28:29 -0500
+
+oftpd (0.2.0-2) unstable; urgency=low
+
+  * Uses debconf now 
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Sun, 18 Mar 2001 13:18:34 -0500
+
+oftpd (0.2.0-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Matthew Danish <mdanish@andrew.cmu.edu>  Thu, 22 Feb 2001 00:56:19 -0500
+
+Local variables:
+mode: debian-changelog
+End:

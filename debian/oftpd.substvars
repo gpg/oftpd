@@ -1,0 +1,2 @@
+misc:Depends=debconf (>= 0.5)
+shlibs:Depends=libc6 (>= 2.2.4-4)

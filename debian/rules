@@ -1,0 +1,64 @@
+#!/usr/bin/make -f
+export DH_COMPAT=2
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	./configure --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info
+
+	touch configure-stamp
+
+build: configure-stamp build-stamp
+build-stamp:
+	dh_testdir
+
+	$(MAKE)
+
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+
+	-$(MAKE) distclean
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+
+	$(MAKE) install prefix=$(CURDIR)/debian/oftpd/usr
+	mv $(CURDIR)/debian/oftpd/usr/bin/oftpd $(CURDIR)/debian/oftpd/usr/sbin	
+	#cp oftpd.conf $(CURDIR)/debian/oftpd/etc/default/oftpd
+	cp oftpd.startup $(CURDIR)/debian/oftpd/etc/init.d/oftpd
+	chmod 755 $(CURDIR)/debian/oftpd/etc/init.d/oftpd 
+
+binary-indep: build install
+
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installdebconf	
+	dh_installdocs
+	dh_installexamples
+	dh_installmenu
+	dh_installcron
+	dh_installmanpages
+	dh_installinfo
+	dh_installchangelogs ChangeLog
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure

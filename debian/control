@@ -1,0 +1,16 @@
+Source: oftpd
+Section: net
+Priority: extra
+Maintainer: Matthew Danish <mdanish@andrew.cmu.edu>
+Build-Depends: debhelper (>> 2.0.0), debconf (>= 0.5.00)
+Standards-Version: 3.5.6.0
+
+Package: oftpd
+Architecture: any
+Depends: ${shlibs:Depends}, debconf (>= 0.5.00), sysklogd | system-log-daemon
+Provides: ftp-server
+Description: A secure anonymous FTP server
+ Designed from the ground up to be as secure as an anonymous FTP server
+ can be.  It runs as non-root and uses chroot() to hide the rest of the
+ system from the ftp daemon.  It is designed to work efficiently with
+ threads.

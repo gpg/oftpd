@@ -1,0 +1,94 @@
+Template: oftpd/enable_oftpd
+Type: boolean
+Default: false
+Description: Do you want oftpd set up to start at boot-time?
+ This option lets you decide whether you want oftpd to be configured to
+ start automatically whenever you reboot.
+
+Template: oftpd/option_menu
+Type: select
+Choices: User to run the server as, Directory to serve, Port to listen on, Passive port range, Interface to listen on, Max number of connections, Exit
+Default: Exit
+Description: Choose a menu item to configure
+ This menu lets you configure various parameters to pass to oftpd.  Each
+ one contains a better description of its purpose, so select each one to
+ find out more.  If you don't want to set it, leave the default value.
+
+Template: oftpd/which_user
+Type: string
+Default: oftpd
+Description: What user would you like oftpd to run as?
+ oftpd is capable of running as a normal system user, this decreases
+ the security risk from any possible security flaws in the program.
+
+Template: oftpd/user_does_not_exist
+Type: note
+Description: That user does not exist.
+ You have selected a user which does not exist.  Please enter in another
+ username, or 'oftpd' for the default.
+
+Template: oftpd/which_dir
+Type: string
+Default: /home/oftpd
+Description: From what directory will oftpd serve files?
+ oftpd is a file server, and it needs to know from what directory in the
+ file system it will serve files from.  To all users of the FTP service,
+ it will appear as if that directory and its contents were the only
+ available files and directories on your system.
+ .
+ Note that oftpd runs chroot'd to this directory as well, this helps
+ decrease security risks in the possibility of a breach.
+
+Template: oftpd/which_port
+Type: string
+Default: 21
+Description: Which TCP port will oftpd listen on?
+ oftpd is a TCP/IP network server, which means that it needs to know what
+ TCP port to listen for connections on.  Port 21 is the standard FTP
+ server port, and is highly recommended if oftpd is to be your main FTP
+ server.  Any other port may be chosen as well, perhaps for personal
+ use or other reason.
+
+Template: oftpd/which_pasv_range
+Type: string
+Default: 1024 65535
+Description: Which TCP port range will oftpd use in passive mode?
+ Most modern FTP clients use the passive mode to contact an FTP
+ server.  The server therefore tells the client a port to connect to.
+ The port is a random one chosen from the range given here.  To adjust
+ firewall rules on the server some administrators like to limit the
+ ports a client may connect to.  Use this setting here to match the
+ firewall rules.  Most users keep the default.
+
+Template: oftpd/which_iface
+Type: string
+Default: 0.0.0.0
+Description: Which interface will oftpd listen on?
+ A machine may have one or multiple network interfaces.  Interfaces include
+ loopback (127.0.0.1), ethernet, PPP connections over modems, wireless
+ networking, and many more.  To have oftpd only listen on one of those
+ interfaces, enter the IP address of that interface (for example, to
+ have oftpd only be available to local users, make it listen to the
+ interface '127.0.0.1').  The default value is '0.0.0.0' which means to
+ listen to all interfaces.
+
+Template: oftpd/max_conn
+Type: string
+Default: 250
+Description: What shall be the maximum number of users allowed at once?
+ oftpd can limit the maximum number of users logged into your FTP server,
+ from 1 to 300.  The default is 250.
+
+Template: oftpd/log_file_msg
+Type: note
+Description: oftpd will be logging to the FTP syslog facility
+ This means that you should make sure that there is a line that looks like:
+ .
+ ftp.*			-/var/log/ftp.log
+ .
+ In your /etc/syslog.conf file, if you are running sysklogd.  Consult
+ your documentation if using syslog-ng, msyslog, or others.
+ Then all the logging from oftpd will be sent to the file /var/log/ftp.log.  
+ If you do not do this, then the output will probably end up scattered 
+ throughout /var/log/debug.  If this has already been set in your
+ syslog configuration, then modify it to suit your tastes.
