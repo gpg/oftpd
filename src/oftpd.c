@@ -414,9 +414,19 @@ void reopen_syslog_hack (int fd)
         return;
     if (my_syslog_fd == -1)
         return; /* not initialized, so we can't use the hack. */
-    if (fd != my_syslog_fd)
-        return; /* We did not lose the fd in the meantime, otherwise
-                 * the next file descriptor should get the same fd. */
+    if (fd == my_syslog_fd) {
+        ; /* We lost the fd in the meantime, otherwise the next
+           * file descriptor should not get this fd. */
+    }
+    else {
+      struct sockaddr_un addr;
+      socklen_t len = sizeof addr;
+
+      if (!getsockname (my_syslog_fd, (struct sockaddr*)&addr, &len)) 
+        if (addr.sun_family == PF_LOCAL) 
+          return;   /* Okay, this is still a unix domain socket, so
+                       everything seems to be fine. */
+    }
 
     my_syslog_fd = -1;
     /* fixme: If we would employ a syslog() wrapper and use a lock
