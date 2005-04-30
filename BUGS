@@ -15,3 +15,14 @@ $Id$
   bizarre thread model.  This will also be fixed on 0.3.x, as I'll pay
   careful attention to cancel points.
 
+- Probable memory leak when pthread_cancel() operates on a thread that
+  has allocated memory (in glob() for instance).  Need to disable cancel 
+  for appropriate regions of code.
+
+- Doesn't handle permissions properly.  If a file is world-readable but 
+  not group-readable and someone in the group tries to read it they
+  should not be allowed, apparently.  :(
+
+- strerror() may not be thread safe (depends on implementation).  Write
+  a thread safe version.
+

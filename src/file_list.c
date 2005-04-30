@@ -13,6 +13,7 @@
 #include <glob.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #if TIME_WITH_SYS_TIME
 # include <sys/time.h>
@@ -50,11 +51,14 @@ char *alloca ();
 
 /* GLOB_ABORTED is defined in Linux but not on FreeBSD */
 #ifndef GLOB_ABORTED
+#ifdef GLOB_ABEND
 #define GLOB_ABORTED GLOB_ABEND
+#endif
 #endif
 
 static int is_valid_dir(const char *dir);
 static void fdprintf(int fd, const char *fmt, ...);
+static const char *skip_ls_options(const char *filespec);
 
 /* if no localtime_r() is available, provide one */
 #ifndef HAVE_LOCALTIME_R
@@ -79,6 +83,7 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
     glob_t glob_buf;
     int i;
     char *file_name;
+    int hidden;
 
     daemon_assert(out >= 0);
     daemon_assert(is_valid_dir(cur_dir));
@@ -88,17 +93,19 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
         cur_dir = "";
         dir_len = 0;
     } else {
-        strcpy(pattern, cur_dir);
-        dir_len = strlen(pattern);
+        dir_len = strlen(cur_dir);
         if ((dir_len + 1) > PATH_MAX) {
             fdprintf(out, "Error; Directory name too long\r\n");
             return 0;
         }
+        strcpy(pattern, cur_dir);
 	if ((cur_dir[0] != '/') || (cur_dir[1] != '\0')) {
             strcat(pattern, "/");
             dir_len++;
 	}
     }
+
+    /* FIXME: Stat the directory to see whether something is hidden.  */
 
     /* make sure we have enough space */
     if ((dir_len + 1 + strlen(filespec)) > PATH_MAX) {
@@ -123,9 +130,11 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
     } else if (glob_ret == GLOB_NOMATCH) {
         return 1;
 #endif /* GLOB_NOMATCH */
+#ifdef GLOB_ABORTED  /* not present in older gcc */
     } else if (glob_ret == GLOB_ABORTED) {
         fdprintf(out, "Error; Read error\r\n");
 	return 0;
+#endif /*GLOB_ABORTED*/
     } else if (glob_ret != 0) {
         fdprintf(out, "Error; Unknown glob() error %d\r\n", glob_ret);
 	return 0;
@@ -178,11 +187,13 @@ int file_list(int out, const char *cur_dir, const char *filespec)
     daemon_assert(is_valid_dir(cur_dir));
     daemon_assert(filespec != NULL);
 
+    filespec = skip_ls_options(filespec);
+
     if (filespec[0] == '/') {
         cur_dir = "";
         dir_len = 0;
     } else {
-        dir_len = strlen(pattern);
+        dir_len = strlen(cur_dir);
         if ((dir_len + 1) > PATH_MAX) {
             fdprintf(out, "Error; Directory name too long\r\n");
             return 0;
@@ -193,6 +204,8 @@ int file_list(int out, const char *cur_dir, const char *filespec)
             dir_len++;
 	}
     }
+
+    /* FIXME: Stat the directory to see whether something is hidden.  */
 
     /* make sure we have enough space */
     if ((dir_len + 1 + strlen(filespec)) > PATH_MAX) {
@@ -218,9 +231,11 @@ int file_list(int out, const char *cur_dir, const char *filespec)
     } else if (glob_ret == GLOB_NOSPACE) {
         fdprintf(out, "Error; Out of memory\r\n");
 	return 0;
+#ifdef GLOB_ABORTED  /* Not present in older gcc. */
     } else if (glob_ret == GLOB_ABORTED) {
         fdprintf(out, "Error; Read error\r\n");
 	return 0;
+#endif /*GLOB_ABORTED*/
     } else if (glob_ret != 0) {
         fdprintf(out, "Error; Unknown glob() error %d\r\n", glob_ret);
 	return 0;
@@ -242,7 +257,15 @@ int file_list(int out, const char *cur_dir, const char *filespec)
     num_files = 0;
     total_blocks = 0;
     for (i=0; i<glob_buf.gl_pathc; i++) {
+        size_t n;
+
         file_name = glob_buf.gl_pathv[i];
+        n = strlen (file_name);
+        if (n >= 7 && !strcmp (file_name+n-7, ".hidden")) {
+            num_files = 0;
+            total_blocks = 0;
+            break;
+        }
         if ( !strncmp (file_name, "/dev", 4)
              && (!file_name[4] || file_name[4] == '/'))
           continue;
@@ -407,3 +430,46 @@ static void fdprintf(int fd, const char *fmt, ...)
 	amt_written += write_ret;
     }
 }
+
+
+/* 
+  hack workaround clients like Midnight Commander that send:
+      LIST -al /dirname 
+*/
+static const char *
+skip_ls_options(const char *filespec)
+{
+    daemon_assert(filespec != NULL);
+
+    for (;;) {
+        /* end when we've passed all options */
+        if (*filespec != '-') {
+            break;
+        }
+        filespec++;
+
+        /* if we find "--", eat it and any following whitespace then return */
+        if ((filespec[0] == '-') && (filespec[1] == ' ')) {
+            filespec += 2;
+            while (isspace(*filespec)) {
+                filespec++;
+            }
+            break;
+        }
+
+        /* otherwise, skip this option */
+        while ((*filespec != '\0') && !isspace(*filespec)) {
+            filespec++;
+        }
+
+        /* and skip any whitespace */
+        while (isspace(*filespec)) {
+            filespec++;
+        }
+    }
+
+    daemon_assert(filespec != NULL);
+
+    return filespec;
+}
+

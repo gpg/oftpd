@@ -1,11 +1,33 @@
+2005-04-30  Werner Koch  <wk@g10code.de>
+
+	Bumped version to 0.3.7-wk1.
+
+	* src/file_list.c (file_nlst, file_list): Fixed the paranoia test for
+	overlong directories.
+
+2005-04-30  Werner Koch  <wk@g10code.de>
+
+	Ported patches from Shane Kerr's 0.3.7 release:
+	
+	* configure.in: Disabled support for sendfile() on FreeBSD.  It
+	appears to me that there's a bug in the sendfile() user-level
+	library.  I would welcome advice from any FreeBSD developer
+	wishing to set me straight.  
+
+	* src/ftp_session.c (do_size): Changed SIZE command to return
+	error for directories.
+	* src/file_list.c: #ifdef wrap GLOB_ABORTED for really old gcc
+	compilers (Slackware or older installations).
+	(skip_ls_options): Add code to skip command line options that are
+	intended for "ls".
+
 2004-01-12  Werner Koch  <wk@gnupg.org>
 
 	* src/ftp_listener.c (connection_acceptor): Don't increase the
-	error counter for EMFILE conditions but a few seconds.
+	error counter for EMFILE conditions but sleep a few seconds.
 
 2003-08-13  Werner Koch  <wk@gnupg.org>
 
-	
 	* src/oftpd.c (reopen_syslog_hack): Removed.
 	(init_syslog_hack): Removed.  That was a whole stupid thing by me
 	as I didn'd realized that we are running chroot and so the

@@ -1650,6 +1650,9 @@ static void do_size(ftp_session_t *f, const ftp_command_t *cmd)
         }
         else if (stat(full_path, &stat_buf) != 0) {
             reply(f, 550, "Error getting file status; %s.", strerror(errno));
+        }
+        else if (S_ISDIR(stat_buf.st_mode)) {
+            reply(f, 550, "File is a directory, SIZE command not valid.");
         } else {
             /* output the size */
             if (sizeof(off_t) == 8) {

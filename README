@@ -51,14 +51,28 @@ Portability
 
 oftpd currently runs on modern Linux systems, including Red Hat-derived
 (Mandrake, Trustix, etc.) and Debian systems.  oftpd has been ported to
-FreeBSD and is in the FreeBSD ports collection.  I expect to install
-FreeBSD and Solaris sometime in 2001 to properly support those
-environments.
+FreeBSD and is in the FreeBSD ports collection.
 
 
-Don't hesitate to e-mail if you have questions or suggestions.  
+While I have given up development of oftpd, it's small and reliable.  Don't
+hesitate to e-mail if you have questions or suggestions.  
 Good luck!
 
 
 Shane Kerr
 shane@time-travellers.org
+
+====== 
+
+Note: For my own purposes I maintain a separate CVS with a slightly
+changed version (well, the one you are currently reading).  As of
+today the Debian version is based upon this one.
+
+Werner Koch
+<wk@gnupg.org>
+
+
+
+
+
+
