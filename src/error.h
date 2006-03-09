@@ -15,4 +15,9 @@ void error_init(error_t *err, int error_code, const char *desc_fmt, ...);
 int error_get_error_code(const error_t *err);
 const char *error_get_desc(const error_t *err);
 
+
+#ifndef HAVE_STRERROR_R
+char *strerror_r (int errnum, char *buf, size_t n);
+#endif
+
 #endif /* ERROR_H */

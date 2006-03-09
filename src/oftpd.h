@@ -28,6 +28,5 @@
 /* README file name (sent automatically as a response to users) */
 #define README_FILE_NAME "README"
 
-
 #endif /* OFTPD_H */
 

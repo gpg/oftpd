@@ -1,3 +1,10 @@
+Unreleased <wk@gnupg.org>
+
+  New option --version.
+
+  A couple of minor fixes.
+
+
 2003-08-13 <wk@gnupg.org>
 
   New option -r, --pasv-range to limit the range for passive ports to

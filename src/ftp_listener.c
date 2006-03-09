@@ -102,8 +102,9 @@ int ftp_listener_init(ftp_listener_t *f,
 
     /* get our current directory */
     if (getcwd(dir, sizeof(dir)) == NULL) {
+        char errbuf[ERRBUF_SIZE];
         error_init(err, errno, "error getting current directory; %s",
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
@@ -166,8 +167,9 @@ int ftp_listener_init(ftp_listener_t *f,
                               buf, 
                               sizeof(buf));
     if (inet_ntop_ret == NULL) {
+        char errbuf[ERRBUF_SIZE];
         error_init(err, errno, "error converting server address to ASCII; %s", 
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
     
@@ -179,7 +181,9 @@ int ftp_listener_init(ftp_listener_t *f,
     /* okay, finally do some socket manipulation */
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
-        error_init(err, errno, "error creating socket; %s", strerror(errno));
+        char errbuf[ERRBUF_SIZE];
+        error_init(err, errno, "error creating socket; %s",
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
@@ -187,47 +191,54 @@ int ftp_listener_init(ftp_listener_t *f,
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&reuseaddr, 
                    sizeof(int)) !=0) 
     {
+        char errbuf[ERRBUF_SIZE];
         close(fd);
         error_init(err, errno, "error setting socket to reuse address; %s", 
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
     if (bind(fd, (struct sockaddr *)&sock_addr, 
              sizeof(struct sockaddr_in)) != 0) 
     {
+        char errbuf[ERRBUF_SIZE];
         close(fd);
-        error_init(err, errno, "error binding address; %s", strerror(errno));
+        error_init(err, errno, "error binding address; %s",
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
     if (listen(fd, SOMAXCONN) != 0) {
+        char errbuf[ERRBUF_SIZE];
         close(fd);
         error_init(err, errno, "error setting socket to listen; %s", 
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
     /* prevent socket from blocking on accept() */
     flags = fcntl(fd, F_GETFL);
     if (flags == -1) {
+        char errbuf[ERRBUF_SIZE];
         close(fd);
         error_init(err, errno, "error getting flags on socket; %s", 
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
+        char errbuf[ERRBUF_SIZE];
         close(fd);
         error_init(err, errno, "error setting socket to non-blocking; %s", 
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
     /* create a pipe to wake up our listening thread */
     if (pipe(pipefds) != 0) {
+        char errbuf[ERRBUF_SIZE];
         close(fd);
         error_init(err, errno, "error creating pipe for internal use; %s", 
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
         return 0;
     }
 
@@ -363,9 +374,10 @@ static void *connection_acceptor(ftp_listener_t *f)
              if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&tcp_nodelay,
                  sizeof(int)) != 0)
              {
+                 char errbuf[ERRBUF_SIZE];
                  syslog(LOG_ERR,
                    "error in setsockopt(), FTP server dropping connection; %s",
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
                  close(fd);
                  continue;
              }
@@ -374,9 +386,10 @@ static void *connection_acceptor(ftp_listener_t *f)
              if (getsockname(fd, (struct sockaddr *)&server_addr, 
                  &addr_len) == -1) 
              {
+                 char errbuf[ERRBUF_SIZE];
                  syslog(LOG_ERR, 
                    "error in getsockname(), FTP server dropping connection; %s",
-                   strerror(errno));
+                   strerror_r(errno, errbuf, ERRBUF_SIZE));
                  close(fd);
                  continue;
              }
@@ -423,14 +436,15 @@ static void *connection_acceptor(ftp_listener_t *f)
 
              num_error = 0;
          } else {
+             char errbuf[ERRBUF_SIZE];
              if ((errno == ECONNABORTED) || (errno == ECONNRESET)) {
                  syslog(LOG_NOTICE, 
                      "interruption accepting FTP connection; %s", 
-                     strerror(errno));
+                     strerror_r(errno, errbuf, ERRBUF_SIZE));
              } else {
                  syslog(LOG_WARNING, 
                      "error accepting FTP connection; %s", 
-                     strerror(errno));
+                     strerror_r(errno, errbuf, ERRBUF_SIZE));
                  /* We don't bump the error counter if we are merely
                     out of file descriptors.  The hope is that some
                     other thread will eventually finish and release

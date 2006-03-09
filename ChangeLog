@@ -1,3 +1,9 @@
+2006-03-09  Werner Koch  <wk@g10code.de>
+
+	* configure.in: Define ERRBUF_SIZE.
+
+	* src/oftpd.c: Add option --version.
+
 2005-04-30  Werner Koch  <wk@g10code.de>
 
 	Bumped version to 0.3.7-wk1.

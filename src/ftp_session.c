@@ -150,8 +150,9 @@ int ftp_session_init(ftp_session_t *f,
         hints.ai_family = AF_INET;
 	hints.ai_flags = AI_PASSIVE;
 	if (getaddrinfo(NULL, "ftp", &hints, &res) != 0) {
+            char errbuf[ERRBUF_SIZE];
 	    error_init(err, 0, "unable to determing IPv4 address; %s",
-	        gai_strerror(errcode));
+	        gai_strerror_r(errcode, errbuf, ERRBUF_SIZE));
 	    return 0;
 	}
 
@@ -729,7 +730,9 @@ static int set_pasv(ftp_session_t *f, sockaddr_storage_t *bind_addr)
 
     socket_fd = socket(SSFAM(bind_addr), SOCK_STREAM, 0);
     if (socket_fd == -1) {
-        reply(f, 500, "Error creating server socket; %s.", strerror(errno));
+        char errbuf[ERRBUF_SIZE];
+        reply(f, 500, "Error creating server socket; %s.",
+              strerror_r(errno, errbuf, ERRBUF_SIZE));
 	return -1;
     } 
 
@@ -742,14 +745,18 @@ static int set_pasv(ftp_session_t *f, sockaddr_storage_t *bind_addr)
 	    break;
 	}
 	if (errno != EADDRINUSE) {
-            reply(f, 500, "Error binding server port; %s.", strerror(errno));
+            char errbuf[ERRBUF_SIZE];
+            reply(f, 500, "Error binding server port; %s.",
+                  strerror_r(errno, errbuf, ERRBUF_SIZE));
             close(socket_fd);
             return -1;
 	}
     }
 
     if (listen(socket_fd, 1) != 0) {
-        reply(f, 500, "Error listening on server port; %s.", strerror(errno));
+        char errbuf[ERRBUF_SIZE];
+        reply(f, 500, "Error listening on server port; %s.",
+              strerror_r(errno, errbuf, ERRBUF_SIZE));
         close(socket_fd);
 	return -1;
     }
@@ -1086,6 +1093,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     off_t amt_to_send;
     int sendfile_ret;
     off_t amt_sent;
+    char errbuf[ERRBUF_SIZE];
 
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
@@ -1107,11 +1115,13 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     else
       file_fd = open(full_path, O_RDONLY);
     if (file_fd == -1) {
-        reply(f, 550, "Error opening file; %s.", strerror(errno));
+        reply(f, 550, "Error opening file; %s.",
+              strerror_r(errno, errbuf, ERRBUF_SIZE));
 	goto exit_retr;
     }
     if (fstat(file_fd, &stat_buf) != 0) {
-        reply(f, 550, "Error getting file information; %s.", strerror(errno));
+        reply(f, 550, "Error getting file information; %s.",
+              strerror_r(errno, errbuf, ERRBUF_SIZE));
 	goto exit_retr;
     }
 #ifndef STATS_MACRO_BROKEN
@@ -1130,7 +1140,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     {
 	if (lseek(file_fd, f->file_offset, SEEK_SET) == -1) {
 	    reply(f, 550, "Error seeking to restart position; %s.", 
-	        strerror(errno));
+	        strerror_r(errno, errbuf, ERRBUF_SIZE));
             goto exit_retr;
 	}
     }
@@ -1153,7 +1163,8 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
         for (;;) {
             read_ret = read(file_fd, buf, sizeof(buf));
 	    if (read_ret == -1) {
-	        reply(f, 550, "Error reading from file; %s.", strerror(errno));
+	        reply(f, 550, "Error reading from file; %s.",
+                      strerror_r(errno, errbuf, ERRBUF_SIZE));
 	        goto exit_retr;
 	    }
 	    if (read_ret == 0) {
@@ -1163,7 +1174,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
 
             if (write_fully(socket_fd, converted_buf, converted_buflen) == -1) {
                 reply(f, 550, "Error writing to data connection; %s.", 
-	          strerror(errno));
+	          strerror_r(errno, errbuf, ERRBUF_SIZE));
                 goto exit_retr;
             }
 
@@ -1190,7 +1201,8 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
                                     &offset, 
                                     amt_to_send);
             if (sendfile_ret != amt_to_send) {
-                reply(f, 550, "Error sending file; %s.", strerror(errno));
+                reply(f, 550, "Error sending file; %s.",
+                      strerror_r(errno, errbuf, ERRBUF_SIZE));
                 goto exit_retr;
             }
 #elif HAVE_FREEBSD_SENDFILE
@@ -1202,7 +1214,8 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
                                     &amt_sent,
                                     0);
             if (sendfile_ret != 0) {
-                reply(f, 550, "Error sending file; %s.", strerror(errno));
+                reply(f, 550, "Error sending file; %s.",
+                      strerror_r(errno, errbuf, ERRBUF_SIZE));
                 goto exit_retr;
             }
             offset += amt_sent;
@@ -1214,7 +1227,8 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
         for (;;) {
             read_ret = read(file_fd, buf, sizeof(buf));
 	    if (read_ret == -1) {
-	        reply(f, 550, "Error reading from file; %s.", strerror(errno));
+	        reply(f, 550, "Error reading from file; %s.",
+                      strerror_r(errno, errbuf, ERRBUF_SIZE));
 	        goto exit_retr;
 	    }
 	    if (read_ret == 0) {
@@ -1222,7 +1236,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
 	    }
 	    if (write_fully(socket_fd, buf, read_ret) == -1) {
 	        reply(f, 550, "Error writing to data connection; %s.", 
-		  strerror(errno));
+		  strerror_r(errno, errbuf, ERRBUF_SIZE));
 	        goto exit_retr;
 	    }
             file_size += read_ret;
@@ -1290,6 +1304,7 @@ static int open_connection(ftp_session_t *f)
     int socket_fd;
     struct sockaddr_in addr;
     unsigned addr_len;
+    char errbuf[ERRBUF_SIZE];
 
     daemon_assert((f->data_channel == DATA_PORT) || 
                   (f->data_channel == DATA_PASSIVE));
@@ -1297,13 +1312,15 @@ static int open_connection(ftp_session_t *f)
     if (f->data_channel == DATA_PORT) {
         socket_fd = socket(SSFAM(&f->data_port), SOCK_STREAM, 0);
 	if (socket_fd == -1) {
-	    reply(f, 425, "Error creating socket; %s.", strerror(errno));
+	    reply(f, 425, "Error creating socket; %s.",
+                  strerror_r(errno, errbuf, ERRBUF_SIZE));
 	    return -1;
 	}
 	if (connect(socket_fd, (struct sockaddr *)&f->data_port, 
 	    sizeof(sockaddr_storage_t)) != 0)
 	{
-	    reply(f, 425, "Error connecting; %s.", strerror(errno));
+	    reply(f, 425, "Error connecting; %s.",
+                  strerror_r(errno, errbuf, ERRBUF_SIZE));
 	    close(socket_fd);
 	    return -1;
 	}
@@ -1313,7 +1330,8 @@ static int open_connection(ftp_session_t *f)
         addr_len = sizeof(struct sockaddr_in);
         socket_fd = accept(f->server_fd, (struct sockaddr *)&addr, &addr_len);
 	if (socket_fd == -1) {
-	    reply(f, 425, "Error accepting connection; %s.", strerror(errno));
+	    reply(f, 425, "Error accepting connection; %s.",
+                  strerror_r(errno, errbuf, ERRBUF_SIZE));
 	    return -1;
 	}
 #ifdef INET6
@@ -1628,6 +1646,7 @@ static void do_size(ftp_session_t *f, const ftp_command_t *cmd)
     const char *file_name;
     char full_path[PATH_MAX+1+MAX_STRING_LEN];
     struct stat stat_buf;
+    char errbuf[ERRBUF_SIZE];
     
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
@@ -1646,10 +1665,12 @@ static void do_size(ftp_session_t *f, const ftp_command_t *cmd)
         if (!strncmp (full_path, "/dev", 4)
             && (!full_path[4] || full_path[4] == '/')) {
             errno = ENOENT;
-            reply(f, 550, "Error getting file status; %s.", strerror(errno));
+            reply(f, 550, "Error getting file status; %s.",
+                  strerror_r(errno, errbuf, ERRBUF_SIZE));
         }
         else if (stat(full_path, &stat_buf) != 0) {
-            reply(f, 550, "Error getting file status; %s.", strerror(errno));
+            reply(f, 550, "Error getting file status; %s.",
+                  strerror_r(errno, errbuf, ERRBUF_SIZE));
         }
         else if (S_ISDIR(stat_buf.st_mode)) {
             reply(f, 550, "File is a directory, SIZE command not valid.");
@@ -1687,6 +1708,7 @@ static void do_mdtm(ftp_session_t *f, const ftp_command_t *cmd)
     struct stat stat_buf;
     struct tm mtime;
     char time_buf[16];
+    char errbuf[ERRBUF_SIZE];
     
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
@@ -1700,10 +1722,12 @@ static void do_mdtm(ftp_session_t *f, const ftp_command_t *cmd)
     if (!strncmp (full_path, "/dev", 4)
         && (!full_path[4] || full_path[4] == '/')) {
         errno = ENOENT;
-        reply(f, 550, "Error getting file status; %s.", strerror(errno));
+        reply(f, 550, "Error getting file status; %s.",
+              strerror_r(errno, errbuf, ERRBUF_SIZE));
     }
     else if (stat(full_path, &stat_buf) != 0) {
-        reply(f, 550, "Error getting file status; %s.", strerror(errno));
+        reply(f, 550, "Error getting file status; %s.",
+              strerror_r(errno, errbuf, ERRBUF_SIZE));
     } else {
         gmtime_r(&stat_buf.st_mtime, &mtime);
         strftime(time_buf, sizeof(time_buf), "%Y%m%d%H%M%S", &mtime);

@@ -70,6 +70,9 @@
 /* Define to 1 if you have the `strerror' function. */
 #undef HAVE_STRERROR
 
+/* Define to 1 if you have the `strerror_r' function. */
+#undef HAVE_STRERROR_R
+
 /* Define to 1 if you have the `strftime' function. */
 #undef HAVE_STRFTIME
 
@@ -172,3 +175,8 @@
 
 /* Define to `unsigned' if <sys/types.h> does not define. */
 #undef size_t
+
+
+/* Size of the buffer used for strerror_r. */
+#define ERRBUF_SIZE 256
+

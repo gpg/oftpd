@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
     char *address;
     
     char temp_buf[256];
+    char errbuf[ERRBUF_SIZE];
 
     struct passwd *user_info;
     error_t err;
@@ -67,8 +68,13 @@ int main(int argc, char *argv[])
 
     /* verify we're running as root */
     if (geteuid() != 0) {
+        if ( argc > 1 && !strcmp (argv[1], "--version")) {
+                printf ("%s %s\n", PACKAGE, VERSION);
+                exit (0);
+        }
         fprintf(stderr, "%s: program needs root permission to run\n", exe_name);
         exit(1);
+
     }
 
     /* default command-line arguments */
@@ -198,6 +204,9 @@ int main(int argc, char *argv[])
                         log_facility = LOG_LOCAL7;
                         break;
                 }
+            } else if (strcmp(argv[i], "--version") == 0) {
+                printf ("%s %s\n", PACKAGE, VERSION);
+                exit (0);
             } else {
                 print_usage("unknown option");
                 exit(1);
@@ -241,11 +250,12 @@ int main(int argc, char *argv[])
     /* change to root directory */
     if (chroot(dir_ptr) != 0) {
         syslog(LOG_ERR, "error with root directory; %s\n", exe_name, 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     if (chdir("/") != 0) {
-        syslog(LOG_ERR, "error changing directory; %s\n", strerror(errno));
+        syslog(LOG_ERR, "error changing directory; %s\n",
+               strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
 
@@ -256,7 +266,7 @@ int main(int argc, char *argv[])
 
       if (stat( "/dev", &stat_buf)) {
         syslog (LOG_ERR, "required `%s/dev' directory is missing: %s\n",
-                dir_ptr, strerror (errno));
+                dir_ptr, strerror_r (errno, errbuf, ERRBUF_SIZE));
       }
 #ifndef STATS_MACRO_BROKEN
       if (!S_ISDIR(stat_buf.st_mode)) {
@@ -283,11 +293,13 @@ int main(int argc, char *argv[])
 
     /* set user to be as inoffensive as possible */
     if (setgid(user_info->pw_gid) != 0) {
-        syslog(LOG_ERR, "error changing group; %s", strerror(errno));
+        syslog(LOG_ERR, "error changing group; %s",
+               strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     if (setuid(user_info->pw_uid) != 0) {
-        syslog(LOG_ERR, "error changing group; %s", strerror(errno));
+        syslog(LOG_ERR, "error changing group; %s",
+               strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
 
@@ -341,25 +353,27 @@ static void daemonize()
     int max_fd;
     int null_fd;
     int fd;
+    char errbuf[ERRBUF_SIZE];
 
     null_fd = open("/dev/null", O_RDWR);
     if (null_fd == -1) {
         fprintf(stderr, "%s: error opening null output device; %s\n", exe_name, 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
 
     max_fd = sysconf(_SC_OPEN_MAX);
     if (max_fd == -1) {
         fprintf(stderr, "%s: error getting maximum open file; %s\n", exe_name, 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
 
 
     fork_ret = fork();
     if (fork_ret == -1) {
-        fprintf(stderr, "%s: error forking; %s\n", exe_name, strerror(errno));
+        fprintf(stderr, "%s: error forking; %s\n",
+                exe_name, strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     if (fork_ret != 0) {
@@ -367,12 +381,13 @@ static void daemonize()
     }
     if (setsid() == -1) {
         fprintf(stderr, "%s: error creating process group; %s\n", exe_name, 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     fork_ret = fork();
     if (fork_ret == -1) {
-        fprintf(stderr, "%s: error forking; %s\n", exe_name, strerror(errno));
+        fprintf(stderr, "%s: error forking; %s\n",
+                exe_name, strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     if (fork_ret != 0) {
@@ -380,17 +395,17 @@ static void daemonize()
     }
     if (dup2(null_fd, 0) == -1) {
         syslog(LOG_ERR, "error setting input to null; %s", 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     if (dup2(null_fd, 1) == -1) {
         syslog(LOG_ERR, "error setting output to null; %s", 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     if (dup2(null_fd, 2) == -1) {
         syslog(LOG_ERR, "error setting error output to null; %s", 
-          strerror(errno));
+          strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }
     for (fd=3; fd<max_fd; fd++) {

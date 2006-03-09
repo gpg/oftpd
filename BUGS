@@ -23,6 +23,3 @@ $Id$
   not group-readable and someone in the group tries to read it they
   should not be allowed, apparently.  :(
 
-- strerror() may not be thread safe (depends on implementation).  Write
-  a thread safe version.
-
