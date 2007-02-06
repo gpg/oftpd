@@ -99,6 +99,9 @@
 /* Define to 1 if you have the <syslog.h> header file. */
 #undef HAVE_SYSLOG_H
 
+/* Define to 1 if you have the <sys/sendfile.h> header file. */
+#undef HAVE_SYS_SENDFILE_H
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 

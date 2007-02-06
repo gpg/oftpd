@@ -28,8 +28,6 @@ static const char *exe_name = "oftpd";
 int pasv_port_low = 1024;
 int pasv_port_high = MAX_PORT;
 
-static int my_syslog_fd = -1;
-
 static void daemonize();
 static void print_usage(const char *error);
 
@@ -249,7 +247,7 @@ int main(int argc, char *argv[])
 
     /* change to root directory */
     if (chroot(dir_ptr) != 0) {
-        syslog(LOG_ERR, "error with root directory; %s\n", exe_name, 
+        syslog(LOG_ERR, "error with root directory; %s\n", 
           strerror_r(errno, errbuf, ERRBUF_SIZE));
         exit(1);
     }

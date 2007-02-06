@@ -31,6 +31,10 @@
 # endif
 #endif
 
+#if HAVE_SYS_SENDFILE_H
+#include <sys/sendfile.h>
+#endif
+
 #include "daemon_assert.h"
 #include "telnet_session.h"
 #include "ftp_command.h"
@@ -377,7 +381,6 @@ static void reply(ftp_session_t *f, int code, const char *fmt, ...)
 static void do_user(ftp_session_t *f, const ftp_command_t *cmd) 
 {
     const char *user;
-    char addr_port[ADDRPORT_STRLEN];
 
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
@@ -398,7 +401,6 @@ static void do_user(ftp_session_t *f, const ftp_command_t *cmd)
 static void do_pass(ftp_session_t *f, const ftp_command_t *cmd) 
 {
     const char *password;
-    char addr_port[ADDRPORT_STRLEN];
 
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
@@ -706,8 +708,6 @@ static void do_lprt(ftp_session_t *f, const ftp_command_t *cmd)
 /* requests.                                                         */
 static void do_eprt(ftp_session_t *f, const ftp_command_t *cmd)  
 {
-    const sockaddr_storage_t *host_port;
-
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
     daemon_assert(cmd->num_arg == 1);                                   
@@ -719,7 +719,7 @@ static void do_eprt(ftp_session_t *f, const ftp_command_t *cmd)
 
 /* support for the various pasv setting functions */
 /* returns the file descriptor of the bound port, or -1 on error */
-/* note: the "host_port" parameter will be modified, having its port set */
+/* note: the "bind_addr" parameter will be modified, having its port set */
 static int set_pasv(ftp_session_t *f, sockaddr_storage_t *bind_addr)
 {
     int socket_fd;
@@ -1084,7 +1084,6 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     char buf[4096];
     char converted_buf[8192];
     int converted_buflen;
-    char addr_port[ADDRPORT_STRLEN];
     struct timeval start_timestamp;
     struct timeval end_timestamp;
     struct timeval transfer_time;
@@ -1092,7 +1091,9 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     off_t offset;
     off_t amt_to_send;
     int sendfile_ret;
+#ifdef HAVE_FREEBSD_SENDFILE
     off_t amt_sent;
+#endif
     char errbuf[ERRBUF_SIZE];
 
     daemon_assert(invariant(f));
@@ -1270,12 +1271,12 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
 
     /* note the transfer */
     syslog(LOG_INFO, 
-      "%s retrieved \"%s\", %ld bytes in %d.%06d seconds", 
+      "%s retrieved \"%s\", %ld bytes in %ld.%06ld seconds", 
       f->client_addr_str, 
       full_path,
       file_size,
-      transfer_time.tv_sec,
-      transfer_time.tv_usec);
+      (long int) transfer_time.tv_sec,
+      (long int) transfer_time.tv_usec);
 
 exit_retr:
     f->file_offset = 0;

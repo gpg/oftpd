@@ -83,7 +83,6 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
     glob_t glob_buf;
     int i;
     char *file_name;
-    int hidden;
 
     daemon_assert(out >= 0);
     daemon_assert(is_valid_dir(cur_dir));

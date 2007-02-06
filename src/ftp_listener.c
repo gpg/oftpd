@@ -73,7 +73,7 @@ typedef struct connection_info {
 /* prototypes */
 static int invariant(const ftp_listener_t *f);
 static void *connection_acceptor(ftp_listener_t *f);
-static void addr_to_string(const sockaddr_storage_t *s, char *addr);
+static char *addr2string(const sockaddr_storage_t *s);
 static void *connection_handler(connection_info_t *info);
 static void connection_handler_cleanup(connection_info_t *info);
 
@@ -474,8 +474,10 @@ static void *connection_acceptor(ftp_listener_t *f)
 /* NOT THREADSAFE - wrap with a mutex before calling! */
 static char *addr2string(const sockaddr_storage_t *s)
 {
+#ifdef INET6
     static char addr[IP_ADDRSTRLEN+1];
     int error;
+#endif
     char *ret_val;
 
     daemon_assert(s != NULL);

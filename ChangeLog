@@ -1,3 +1,23 @@
+2007-02-06  Marcus Brinkmann  <marcus@g10code.de>
+
+	* configure.in (AC_CHECK_HEADERS): Check for sys/sendfile.h.
+	* src/file_list.c (file_nlst): Remove unused variable HIDDEN.
+	* src/ftp_session.c [HAVE_SYS_SENDFILE_H]: Include
+	<sys/sendfile.h>.
+	(do_user, do_pass): Remove unused variable addr_port.
+	(do_eprt): Remove unused variable HOST_PORT.
+	(do_retr): Remove unused variable host_port.  Adjust format output
+	parameter for timespec members, cast these to the format type.
+	[!HAVE_FREEBSD_SENDFILE]: Do not define otherwise unused variable
+	AMT_SENT.
+	* src/ftp_listener.c (addr2string) [!INET6]: Do not define
+	variables ERROR and ADDR to suppress compiler warning.
+	(addr_to_string): Replace with prototype for addr2string.
+	* src/oftpd.c: Remove extra argument EXE_NAME in syslog
+	invocation.
+	(my_syslog_fd): Remove unused global variable.
+	* src/daemon_assert.c: Include <stdlib.h>.
+
 2006-03-09  Werner Koch  <wk@g10code.de>
 
 	* configure.in: Define ERRBUF_SIZE.
