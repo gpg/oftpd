@@ -516,8 +516,9 @@ static void *connection_handler(connection_info_t *info)
     /* don't save state for pthread_join() */
     pthread_detach(pthread_self());
 
-    /* set up our watchdog */
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    /* Set up our watchdog.  We only enable cancellation during long
+       operations.  */
+    pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
     watchdog_add_watched(&f->watchdog, &info->watched);
 
     /* set up our cleanup handler */

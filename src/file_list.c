@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #if TIME_WITH_SYS_TIME
 # include <sys/time.h>
@@ -62,7 +63,6 @@ static const char *skip_ls_options(const char *filespec);
 
 /* if no localtime_r() is available, provide one */
 #ifndef HAVE_LOCALTIME_R
-#include <pthread.h>
 
 struct tm *localtime_r(const time_t *timep, struct tm *timeptr) 
 {
@@ -74,6 +74,11 @@ struct tm *localtime_r(const time_t *timep, struct tm *timeptr)
     return timeptr;
 }
 #endif /* HAVE_LOCALTIME_R */
+
+static void file_nlst_cleanup(glob_t *glob_buf)
+{
+  globfree (glob_buf);
+}
 
 int file_nlst(int out, const char *cur_dir, const char *filespec)
 {
@@ -139,6 +144,8 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
 	return 0;
     }
 
+    pthread_cleanup_push ((void (*)())file_nlst_cleanup, &glob_buf);
+
     /* print our results */
     for (i=0; i<glob_buf.gl_pathc; i++) {
         file_name = glob_buf.gl_pathv[i];
@@ -151,8 +158,9 @@ int file_nlst(int out, const char *cur_dir, const char *filespec)
 	fdprintf(out, "%s\r\n", file_name);
     }
 
-    /* free and return */
-    globfree(&glob_buf);
+    /* This frees glob_buf.  */
+    pthread_cleanup_pop(1);
+
     return 1;
 }
 
@@ -162,6 +170,20 @@ typedef struct {
     struct stat stat;
 } file_info_t;
 
+struct file_list_cleanup_s
+{
+  void *file_info;
+  glob_t *glob_buf;
+};
+
+static void file_list_cleanup(struct file_list_cleanup_s *info)
+{
+  if (info->file_info)
+    free (info->file_info);
+  if (info->glob_buf)
+    globfree (info->glob_buf);
+}
+  
 int file_list(int out, const char *cur_dir, const char *filespec)
 {
     int dir_len;
@@ -181,7 +203,12 @@ int file_list(int out, const char *cur_dir, const char *filespec)
     char date_buf[13];
     char link[PATH_MAX+1];
     int link_len;
-    
+
+    struct file_list_cleanup_s cleanup_info;
+
+    cleanup_info.file_info = NULL;
+    cleanup_info.glob_buf = NULL;
+
     daemon_assert(out >= 0);
     daemon_assert(is_valid_dir(cur_dir));
     daemon_assert(filespec != NULL);
@@ -240,17 +267,23 @@ int file_list(int out, const char *cur_dir, const char *filespec)
 	return 0;
     }
 
+ 
     /* make a buffer to store our information */
 #ifdef HAVE_ALLOCA
     file_info = (file_info_t *)alloca(sizeof(file_info_t) * glob_buf.gl_pathc);
 #else
     file_info = (file_info_t *)malloc(sizeof(file_info_t) * glob_buf.gl_pathc);
+    cleanup_info.file_info = file_info;
 #endif
     if (file_info == NULL) {
-        fdprintf(out, "Error; Out of memory\r\n");
+	/* Note that fdprintf is a cancellation point.  */
 	globfree(&glob_buf);
+        fdprintf(out, "Error; Out of memory\r\n");
 	return 0;
     }
+
+    cleanup_info.glob_buf = &glob_buf;
+    pthread_cleanup_push ((void (*)())file_list_cleanup, &cleanup_info);
 
     /* collect information */
     num_files = 0;
@@ -369,11 +402,9 @@ int file_list(int out, const char *cur_dir, const char *filespec)
 	fdprintf(out, "\r\n");
     }
 
-    /* free memory & return */
-#ifndef HAVE_ALLOCA
-    free(file_info);
-#endif 
-    globfree(&glob_buf);
+    /* This frees file_info (if necessary) and glob_buf.  */
+    pthread_cleanup_pop (1);
+
     return 1;
 }
 
@@ -400,18 +431,18 @@ static int is_valid_dir(const char *dir)
 
 static void fdprintf(int fd, const char *fmt, ...)
 {
-    char buf[PATH_MAX+1];
+    char buf[PATH_MAX+3];
     int buflen;
     va_list ap;
     int amt_written;
     int write_ret;
+    int state;
 
     daemon_assert(fd >= 0);
     daemon_assert(fmt != NULL);
 
     va_start(ap, fmt);
     buflen = vsnprintf(buf, sizeof(buf)-1, fmt, ap);
-    buf[PATH_MAX] = 0; /* Make extra sure that the string is terminated. */
     va_end(ap);
     if (buflen <= 0) {
         return;
@@ -419,15 +450,18 @@ static void fdprintf(int fd, const char *fmt, ...)
     if (buflen >= sizeof(buf)) {
         buflen = sizeof(buf)-1;
     }
+    buf[buflen] = 0; /* Make extra sure the string is terminated. */
 
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &state);
     amt_written = 0;
     while (amt_written < buflen) {
         write_ret = write(fd, buf+amt_written, buflen-amt_written);
 	if (write_ret <= 0) {
-	    return;
+	    break;
 	}
 	amt_written += write_ret;
     }
+    pthread_setcancelstate (state, NULL);
 }
 
 

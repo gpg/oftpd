@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
 #include "daemon_assert.h"
 #include "telnet_session.h"
 
@@ -197,6 +198,7 @@ static void process_data(telnet_session_t *t, int wait_flag)
     fd_set exceptfds;
     struct timeval tv_zero;
     struct timeval *tv;
+    int state;
 
     /* set up our select() variables */
     FD_ZERO(&readfds);
@@ -225,6 +227,8 @@ static void process_data(telnet_session_t *t, int wait_flag)
         FD_SET(t->out_fd, &exceptfds);
     }
 
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &state);
+
     /* see if there's anything to do */
     if (select(FD_SETSIZE, &readfds, &writefds, &exceptfds, tv) > 0) {
 
@@ -240,6 +244,8 @@ static void process_data(telnet_session_t *t, int wait_flag)
 	    write_outgoing_data(t);
         }
     }
+
+    pthread_setcancelstate (state, NULL);
 }
 
 static void read_incoming_data(telnet_session_t *t)

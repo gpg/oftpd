@@ -67,6 +67,13 @@ static void get_absolute_fname(char *fname,
                                const char *dir,
                                const char *file);
 
+/* Common cleanup handler.  */
+static void fd_cleanup (int *fd)
+{
+  if (*fd != -1)
+    close (*fd);
+}
+
 /* command handlers */
 static void do_user(ftp_session_t *f, const ftp_command_t *cmd);
 static void do_pass(ftp_session_t *f, const ftp_command_t *cmd);
@@ -746,18 +753,20 @@ static int set_pasv(ftp_session_t *f, sockaddr_storage_t *bind_addr)
 	}
 	if (errno != EADDRINUSE) {
             char errbuf[ERRBUF_SIZE];
+	    /* Note that reply() may enable cancellation.  */
+            close(socket_fd);
             reply(f, 500, "Error binding server port; %s.",
                   strerror_r(errno, errbuf, ERRBUF_SIZE));
-            close(socket_fd);
             return -1;
 	}
     }
 
     if (listen(socket_fd, 1) != 0) {
         char errbuf[ERRBUF_SIZE];
+	/* Note that reply() may enable cancellation.  */
+        close(socket_fd);
         reply(f, 500, "Error listening on server port; %s.",
               strerror_r(errno, errbuf, ERRBUF_SIZE));
-        close(socket_fd);
 	return -1;
     }
 
@@ -788,6 +797,15 @@ static void do_pasv(ftp_session_t *f, const ftp_command_t *cmd)
     /* report port to client */
     addr = ntohl(f->server_ipv4_addr.sin_addr.s_addr);
     port = ntohs(f->server_ipv4_addr.sin_port);
+
+    /* Close any outstanding PASSIVE port.  Do this before invoking
+       reply(), because that may enable cancellation.  */
+    if (f->data_channel == DATA_PASSIVE) {
+      close(f->server_fd);
+    }
+    f->data_channel = DATA_PASSIVE;
+    f->server_fd = socket_fd;
+
     reply(f, 227, "Entering Passive Mode (%d,%d,%d,%d,%d,%d).",
         addr >> 24, 
 	(addr >> 16) & 0xff,
@@ -795,13 +813,6 @@ static void do_pasv(ftp_session_t *f, const ftp_command_t *cmd)
 	addr & 0xff,
         port >> 8, 
 	port & 0xff);
-
-   /* close any outstanding PASSIVE port */
-   if (f->data_channel == DATA_PASSIVE) {
-       close(f->server_fd);
-   }
-   f->data_channel = DATA_PASSIVE;
-   f->server_fd = socket_fd;
 
 exit_pasv:
     daemon_assert(invariant(f));
@@ -829,6 +840,13 @@ static void do_lpsv(ftp_session_t *f, const ftp_command_t *cmd)
         goto exit_lpsv;
     }
 
+    /* close any outstanding PASSIVE port */
+    if (f->data_channel == DATA_PASSIVE) {
+      close(f->server_fd);
+    }
+    f->data_channel = DATA_PASSIVE;
+    f->server_fd = socket_fd;
+
     /* report address and port to client */
 #ifdef INET6
     if (SSFAM(&f->server_addr) == AF_INET6) {
@@ -848,13 +866,6 @@ static void do_lpsv(ftp_session_t *f, const ftp_command_t *cmd)
     }
 
     reply(f, 228, "Entering Long Passive Mode %s", addr);
-
-   /* close any outstanding PASSIVE port */
-   if (f->data_channel == DATA_PASSIVE) {
-       close(f->server_fd);
-   }
-   f->data_channel = DATA_PASSIVE;
-   f->server_fd = socket_fd;
 
 exit_lpsv:
     daemon_assert(invariant(f));
@@ -907,16 +918,16 @@ static void do_epsv(ftp_session_t *f, const ftp_command_t *cmd)
         goto exit_epsv;
     }
 
-    /* report port to client */
-    reply(f, 229, "Entering Extended Passive Mode (|||%d|)", 
-        ntohs(SINPORT(&f->server_addr)));
-
     /* close any outstanding PASSIVE port */
     if (f->data_channel == DATA_PASSIVE) {
         close(f->server_fd);
     }
     f->data_channel = DATA_PASSIVE;
     f->server_fd = socket_fd;  
+
+    /* report port to client */
+    reply(f, 229, "Entering Extended Passive Mode (|||%d|)", 
+        ntohs(SINPORT(&f->server_addr)));
 
 exit_epsv:
     daemon_assert(invariant(f));
@@ -1095,6 +1106,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     off_t amt_sent;
 #endif
     char errbuf[ERRBUF_SIZE];
+    int state;
 
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
@@ -1104,6 +1116,10 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     file_fd = -1;
     socket_fd = -1;
 
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &state);
+    pthread_cleanup_push ((void (*)())fd_cleanup, &file_fd);
+    pthread_cleanup_push ((void (*)())fd_cleanup, &socket_fd);
+    
     /* create an absolute name for our file */
     file_name = cmd->arg[0].string;
     get_absolute_fname(full_path, sizeof(full_path), f->dir, file_name);
@@ -1247,7 +1263,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
 #endif  /* HAVE_SENDFILE */
     }
 
-    /* disconnect */
+    /* Disconnect eagerly.  */
     close(socket_fd);
     socket_fd = -1;
 
@@ -1279,13 +1295,12 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
       (long int) transfer_time.tv_usec);
 
 exit_retr:
+    /* Close socket_fd.  */
+    pthread_cleanup_pop (1);
+    /* Close file_fd.  */
+    pthread_cleanup_pop (1);
     f->file_offset = 0;
-    if (socket_fd != -1) {
-        close(socket_fd);
-    }
-    if (file_fd != -1) {
-        close(file_fd);
-    }
+    pthread_setcancelstate (state, NULL);
     daemon_assert(invariant(f));
 }
 
@@ -1302,28 +1317,32 @@ static void do_stor(ftp_session_t *f, const ftp_command_t *cmd)
 
 static int open_connection(ftp_session_t *f)
 {
-    int socket_fd;
+    int socket_fd = -1;
     struct sockaddr_in addr;
     unsigned addr_len;
     char errbuf[ERRBUF_SIZE];
+    int state;
 
     daemon_assert((f->data_channel == DATA_PORT) || 
                   (f->data_channel == DATA_PASSIVE));
 
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &state);
+    pthread_cleanup_push ((void (*)())fd_cleanup, &socket_fd);
     if (f->data_channel == DATA_PORT) {
         socket_fd = socket(SSFAM(&f->data_port), SOCK_STREAM, 0);
 	if (socket_fd == -1) {
 	    reply(f, 425, "Error creating socket; %s.",
                   strerror_r(errno, errbuf, ERRBUF_SIZE));
-	    return -1;
+	    goto leave_oc;
 	}
 	if (connect(socket_fd, (struct sockaddr *)&f->data_port, 
-	    sizeof(sockaddr_storage_t)) != 0)
+			 sizeof(sockaddr_storage_t)) != 0)
 	{
+	    close(socket_fd);
+	    socket_fd = -1;
 	    reply(f, 425, "Error connecting; %s.",
                   strerror_r(errno, errbuf, ERRBUF_SIZE));
-	    close(socket_fd);
-	    return -1;
+	    goto leave_oc;
 	}
     } else {
         daemon_assert(f->data_channel == DATA_PASSIVE);
@@ -1333,33 +1352,40 @@ static int open_connection(ftp_session_t *f)
 	if (socket_fd == -1) {
 	    reply(f, 425, "Error accepting connection; %s.",
                   strerror_r(errno, errbuf, ERRBUF_SIZE));
-	    return -1;
+	    goto leave_oc;
 	}
 #ifdef INET6
         /* in IPv6, the client can connect to a channel using a different */
 	/* protocol - in that case, we'll just blindly let the connection */
 	/* through, otherwise verify addresses match */
-        if (SAFAM(addr) == SSFAM(&f->client_addr)) {
+	if (SAFAM(addr) == SSFAM(&f->client_addr)) {
 	    if (memcmp(&SINADDR(&f->client_addr), &SINADDR(&addr), 
 	               sizeof(SINADDR(&addr))))
 	    {
+	        close(socket_fd);
+		socket_fd = -1;
 	        reply(f, 425, 
 	          "Error accepting connection; connection from invalid IP.");
-	        close(socket_fd);
-	        return -1;
+		goto leave_oc;
             }
 	}
 #else
 	if (memcmp(&f->client_addr.sin_addr, 
 	    &addr.sin_addr, sizeof(struct in_addr))) 
 	{
+	    close(socket_fd);
+	    socket_fd = -1;
 	    reply(f, 425, 
 	      "Error accepting connection; connection from invalid IP.");
-	    close(socket_fd);
-	    return -1;
+	    goto leave_oc;
 	}
 #endif
     }
+
+ leave_oc:
+    /* Do not close SOCKET_FD here.  */
+    pthread_cleanup_pop (0);
+    pthread_setcancelstate (state, NULL);
 
     return socket_fd;
 }
@@ -1486,9 +1512,6 @@ static void do_nlst(ftp_session_t *f, const ftp_command_t *cmd)
     daemon_assert(cmd != NULL);
     daemon_assert((cmd->num_arg == 0) || (cmd->num_arg == 1));
 
-    /* set up for exit */
-    fd = -1;
-
     /* figure out what parameters to use */
     if (cmd->num_arg == 0) {
         param = "*";
@@ -1506,7 +1529,7 @@ static void do_nlst(ftp_session_t *f, const ftp_command_t *cmd)
     /* check spec passed */
     if (!filespec_is_legal(param)) {
         reply(f, 550, "Illegal filename passed.");
-	goto exit_nlst;
+	return;
     }
 
     /* ready to list */
@@ -1514,9 +1537,10 @@ static void do_nlst(ftp_session_t *f, const ftp_command_t *cmd)
 
     /* open our data connection */
     fd = open_connection(f);
-    if (fd == -1) {
-        goto exit_nlst;
-    }
+    if (fd == -1)
+      return;
+
+    pthread_cleanup_push ((void (*)())fd_cleanup, &fd);
 
     /* send any files */
     send_ok = file_nlst(fd, f->dir, param);
@@ -1530,11 +1554,8 @@ static void do_nlst(ftp_session_t *f, const ftp_command_t *cmd)
         reply(f, 451, "Error sending name list.");
     }
 
-    /* clean up and exit */
-exit_nlst:
-    if (fd != -1) {
-        close(fd);
-    }
+    pthread_cleanup_pop (1);
+
     daemon_assert(invariant(f));
 }
 
@@ -1547,9 +1568,6 @@ static void do_list(ftp_session_t *f, const ftp_command_t *cmd)
     daemon_assert(invariant(f));
     daemon_assert(cmd != NULL);
     daemon_assert((cmd->num_arg == 0) || (cmd->num_arg == 1));
-
-    /* set up for exit */
-    fd = -1;
 
     /* figure out what parameters to use */
     if (cmd->num_arg == 0) {
@@ -1568,7 +1586,7 @@ static void do_list(ftp_session_t *f, const ftp_command_t *cmd)
     /* check spec passed */
     if (!filespec_is_legal(param)) {
         reply(f, 550, "Illegal filename passed.");
-	goto exit_list;
+	return;
     }
 
     /* ready to list */
@@ -1576,9 +1594,10 @@ static void do_list(ftp_session_t *f, const ftp_command_t *cmd)
 
     /* open our data connection */
     fd = open_connection(f);
-    if (fd == -1) {
-        goto exit_list;
-    }
+    if (fd == -1)
+      return;
+
+    pthread_cleanup_push ((void (*)())fd_cleanup, &fd);
 
     /* send any files */
     send_ok = file_list(fd, f->dir, param);
@@ -1592,11 +1611,8 @@ static void do_list(ftp_session_t *f, const ftp_command_t *cmd)
         reply(f, 451, "Error sending file list.");
     }
 
-    /* clean up and exit */
-exit_list:
-    if (fd != -1) {
-        close(fd);
-    }
+    pthread_cleanup_pop (1);
+
     daemon_assert(invariant(f));
 }
 
@@ -1757,15 +1773,11 @@ static void send_readme(const ftp_session_t *f, int code)
     daemon_assert(code >= 100);
     daemon_assert(code <= 559);
 
-    /* set up for early exit */
-    fd = -1;
-
     /* verify our README wouldn't be too long */
     dir_len = strlen(f->dir);
-    if ((dir_len + 1 + sizeof(README_FILE_NAME)) > sizeof(file_name)) {
-        goto exit_send_readme;
-    }
-
+    if ((dir_len + 1 + sizeof(README_FILE_NAME)) > sizeof(file_name))
+      return;
+    
     /* create a README file name */
     strcpy(file_name, f->dir);
     strcat(file_name, "/");
@@ -1773,9 +1785,10 @@ static void send_readme(const ftp_session_t *f, int code)
 
     /* open our file */
     fd = open(file_name, O_RDONLY);
-    if (fd == -1) {
-        goto exit_send_readme;
-    }
+    if (fd == -1)
+      return;
+
+    pthread_cleanup_push ((void (*)())fd_cleanup, &fd);
 
     /* verify this isn't a directory */
     if (fstat(fd, &stat_buf) != 0) {
@@ -1823,9 +1836,8 @@ static void send_readme(const ftp_session_t *f, int code)
 
     /* cleanup and exit */
 exit_send_readme:
-    if (fd != -1) {
-        close(fd);
-    }
+    pthread_cleanup_pop (1);
+
     daemon_assert(invariant(f));
 }
 
@@ -1836,9 +1848,11 @@ static void netscape_hack(int fd)
     struct timeval timeout;
     int select_ret;
     char c;
+    int state;
 
     daemon_assert(fd >= 0);
 
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &state);
     shutdown(fd, 1);
     FD_ZERO(&readfds);
     FD_SET(fd, &readfds);
@@ -1848,6 +1862,7 @@ static void netscape_hack(int fd)
     if (select_ret > 0) {
         read(fd, &c, 1);
     }
+    pthread_setcancelstate (state, NULL);
 }
 
 /* compare two addresses to see if they contain the same IP address */

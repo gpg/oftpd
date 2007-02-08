@@ -1,3 +1,21 @@
+2007-02-08  Marcus Brinkmann  <marcus@g10code.de>
+
+	* src/telnet_session.c: Include <pthread.h>.
+	(process_data): Enable cancellation.
+	* src/ftp_session.c (netscape_hack): Likewise.
+	(send_readme, do_list, do_nlst): Use cancellation cleanup handler.
+	(set_pasv): Release socket_fd before invoking reply() in case of
+	failure.
+	(open_connection): Likewise.
+	(do_pasv): Close outstanding passive port before invoking reply().
+	(do_lpsv): Likewise.
+	(do_epsv): Likewise.
+	* src/file_list.c: Always include <pthread.h>.
+	(fdprintf): Bump buffer size to PATH_MAX + 3.  Enable cancellation
+	while writing.
+	* src/ftp_listener.c (connection_handler): Do not use asynchronous
+	cancellation.  Disable cancellation until further notice.
+
 2007-02-06  Marcus Brinkmann  <marcus@g10code.de>
 
 	* configure.in (AC_CHECK_HEADERS): Check for sys/sendfile.h.
