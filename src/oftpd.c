@@ -243,7 +243,8 @@ int main(int argc, char *argv[])
 
     /* log the start time */
     openlog(NULL, LOG_NDELAY, log_facility);
-    syslog(LOG_INFO,"Starting, version %s, as PID %d", VERSION, getpid());
+    syslog(LOG_INFO,"Starting, version %s, as PID %d",
+           PACKAGE_VERSION, getpid());
 
     /* change to root directory */
     if (chroot(dir_ptr) != 0) {
