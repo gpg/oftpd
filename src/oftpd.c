@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     /* verify we're running as root */
     if (geteuid() != 0) {
         if ( argc > 1 && !strcmp (argv[1], "--version")) {
-                printf ("%s %s\n", PACKAGE, VERSION);
+                printf ("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
                 exit (0);
         }
         fprintf(stderr, "%s: program needs root permission to run\n", exe_name);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
                         break;
                 }
             } else if (strcmp(argv[i], "--version") == 0) {
-                printf ("%s %s\n", PACKAGE, VERSION);
+                printf ("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
                 exit (0);
             } else {
                 print_usage("unknown option");
