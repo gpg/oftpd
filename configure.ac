@@ -1,7 +1,10 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(src/file_list.c)
-AM_INIT_AUTOMAKE(oftpd, 0.3.7-wk2)
+
+
+AC_INIT([oftpd], [0.3.7-wk3], [bug-oftpd@g10code.com])
+AC_CONFIG_SRCDIR(src/file_list.c)
 AM_CONFIG_HEADER(src/config.h)
+AM_INIT_AUTOMAKE
 
 dnl Checks for programs.
 AC_PROG_AWK
@@ -16,7 +19,8 @@ AC_CHECK_HEADERS(fcntl.h limits.h sys/time.h syslog.h unistd.h sys/types.h sys/s
 dnl Check for ss_family
 AC_EGREP_CPP(__ss_family,
 [#include<sys/socket.h>
-],,AC_DEFINE(HAVE_NEW_SS_FAMILY))
+],,AC_DEFINE([HAVE_NEW_SS_FAMILY], 1,
+        [new ss_family or old (meaning __ss_family) in sockaddr structure]))
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -61,7 +65,9 @@ AC_TRY_LINK([
 off_t offset;
 sendfile(0, 1, &offset);
 ], 
-AC_DEFINE(HAVE_LINUX_SENDFILE) AC_DEFINE(HAVE_SENDFILE) have_sendfile=yes
+AC_DEFINE([HAVE_LINUX_SENDFILE], 1, [Linux-style sendfile() supported])
+AC_DEFINE([HAVE_SENDFILE], 1, [sendfile() supported])
+have_sendfile=yes
 )
 if test $have_sendfile = no; then
 AC_TRY_LINK([
@@ -112,7 +118,7 @@ AH_BOTTOM([
 ])
 
 
-
 AC_SUBST(HAVE_NEW_SS_FAMILY)
-AC_OUTPUT(Makefile src/Makefile man/Makefile)
-dnl AM_CONFIG_HEADER(src/config.h)
+
+AC_CONFIG_FILES([Makefile src/Makefile man/Makefile])
+AC_OUTPUT

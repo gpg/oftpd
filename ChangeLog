@@ -1,3 +1,9 @@
+2007-02-08  Werner Koch  <wk@g10code.com>
+
+	* configure.in: Renamed to configure.ac and converted to modern
+	style.
+	* acconfig.h: Removed.
+
 2007-02-08  Marcus Brinkmann  <marcus@g10code.de>
 
 	* src/telnet_session.c: Include <pthread.h>.
