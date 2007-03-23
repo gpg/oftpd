@@ -88,10 +88,11 @@ void telnet_session_init(telnet_session_t *t, int in, int out)
 }
 
 /* print output */
-int telnet_session_print(telnet_session_t *t, const char *s)
+static int do_telnet_session_print(telnet_session_t *t, const char *s, 
+                                   const char *s2)
 {
-    int len;
-    int amt_printed;
+    int len, len2;
+    int amt_printed, amt_printed2;
 
     daemon_assert(invariant(t));
 
@@ -100,8 +101,9 @@ int telnet_session_print(telnet_session_t *t, const char *s)
         daemon_assert(invariant(t));
 	return 1;
     }
+    len2 = strlen(s2);
 
-    amt_printed = 0;
+    amt_printed = amt_printed2 = 0;
     do {
         if ((t->out_errno != 0) || (t->out_eof != 0)) {
             daemon_assert(invariant(t));
@@ -113,8 +115,17 @@ int telnet_session_print(telnet_session_t *t, const char *s)
             add_outgoing_char(t, s[amt_printed]);
             amt_printed++;
 	}
+        if (amt_printed == len)
+          {
+            while ((amt_printed2 < len2) && (t->out_buflen < BUF_LEN))
+              {
+                daemon_assert(s2[amt_printed2] != '\0');
+                add_outgoing_char(t, s2[amt_printed2]);
+                amt_printed2++;
+              }
+          }
         process_data(t, 1);
-    } while (amt_printed < len);
+    } while (amt_printed < len && amt_printed2 < len2);
 
     while (t->out_buflen > 0) {
         if ((t->out_errno != 0) || (t->out_eof != 0)) {
@@ -128,15 +139,19 @@ int telnet_session_print(telnet_session_t *t, const char *s)
     return 1;
 }
 
+
+/* print output */
+int telnet_session_print(telnet_session_t *t, const char *s)
+{
+  return do_telnet_session_print (t, s, "");
+}
+
+
 /* print a line output */
 int telnet_session_println(telnet_session_t *t, const char *s)
 {
     daemon_assert(invariant(t));
-    if (!telnet_session_print(t, s)) {
-        daemon_assert(invariant(t));
-        return 0;
-    }
-    if (!telnet_session_print(t, "\015\012")) {
+    if (!do_telnet_session_print(t, s, "\015\012")) {
         daemon_assert(invariant(t));
         return 0;
     }

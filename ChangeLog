@@ -1,3 +1,16 @@
+2007-03-23  Werner Koch  <wk@g10code.com>
+
+	* configure.ac: Set version to 0.3.7-wk4.
+
+	* src/telnet_session.c (telnet_session_print): Factor code out
+	to ..
+	(do_telnet_session_print): .. new.  Add additional argument S2.
+	(telnet_session_println): Change to use the new fucntion.  This is
+	required so that we use just one write for the common case that
+	the CRLF fits into the same buffer.  Some firewalls have problems
+	with receiving an FTP command without the CRLF in one [acket and
+	the CRLF in the next one.
+
 2007-02-08  Werner Koch  <wk@g10code.com>
 
 	* src/oftpd.c (main): s/PACKAGE/PACKAGE_NAME/

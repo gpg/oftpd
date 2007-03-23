@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 
-AC_INIT([oftpd], [0.3.7-wk3], [bug-oftpd@g10code.com])
+AC_INIT([oftpd], [0.3.7-wk4], [bug-oftpd@g10code.com])
 AC_CONFIG_SRCDIR(src/file_list.c)
 AM_CONFIG_HEADER(src/config.h)
 AM_INIT_AUTOMAKE
