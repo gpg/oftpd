@@ -88,11 +88,13 @@ void telnet_session_init(telnet_session_t *t, int in, int out)
 }
 
 /* print output */
-static int do_telnet_session_print(telnet_session_t *t, const char *s, 
+static int do_telnet_session_print(telnet_session_t *t, 
+                                   const char *s0,
+                                   const char *s, 
                                    const char *s2)
 {
-    int len, len2;
-    int amt_printed, amt_printed2;
+    int len, len0, len2;
+    int amt_printed, amt_printed0, amt_printed2;
 
     daemon_assert(invariant(t));
 
@@ -101,27 +103,37 @@ static int do_telnet_session_print(telnet_session_t *t, const char *s,
         daemon_assert(invariant(t));
 	return 1;
     }
+    len0 = strlen(s0);
     len2 = strlen(s2);
 
-    amt_printed = amt_printed2 = 0;
+    amt_printed = amt_printed0 = amt_printed2 = 0;
     do {
         if ((t->out_errno != 0) || (t->out_eof != 0)) {
             daemon_assert(invariant(t));
             return 0;
         }
-        while ((amt_printed < len) && (t->out_buflen < BUF_LEN))
-	{
-            daemon_assert(s[amt_printed] != '\0');
-            add_outgoing_char(t, s[amt_printed]);
-            amt_printed++;
-	}
-        if (amt_printed == len)
+        while ((amt_printed0 < len0) && (t->out_buflen < BUF_LEN))
           {
-            while ((amt_printed2 < len2) && (t->out_buflen < BUF_LEN))
+            daemon_assert(s0[amt_printed0] != '\0');
+            add_outgoing_char(t, s0[amt_printed0]);
+            amt_printed0++;
+          }
+        if (amt_printed0 == len0)
+          {
+            while ((amt_printed < len) && (t->out_buflen < BUF_LEN))
               {
-                daemon_assert(s2[amt_printed2] != '\0');
-                add_outgoing_char(t, s2[amt_printed2]);
-                amt_printed2++;
+                daemon_assert(s[amt_printed] != '\0');
+                add_outgoing_char(t, s[amt_printed]);
+                amt_printed++;
+              }
+            if (amt_printed == len)
+              {
+                while ((amt_printed2 < len2) && (t->out_buflen < BUF_LEN))
+                  {
+                    daemon_assert(s2[amt_printed2] != '\0');
+                    add_outgoing_char(t, s2[amt_printed2]);
+                    amt_printed2++;
+                  }
               }
           }
         process_data(t, 1);
@@ -143,7 +155,13 @@ static int do_telnet_session_print(telnet_session_t *t, const char *s,
 /* print output */
 int telnet_session_print(telnet_session_t *t, const char *s)
 {
-  return do_telnet_session_print (t, s, "");
+  return do_telnet_session_print (t, "", s, "");
+}
+
+int telnet_session_print_with_prefix(telnet_session_t *t,
+                                     const char *prefix, const char *s)
+{
+  return do_telnet_session_print (t, prefix, s, "");
 }
 
 
@@ -151,7 +169,20 @@ int telnet_session_print(telnet_session_t *t, const char *s)
 int telnet_session_println(telnet_session_t *t, const char *s)
 {
     daemon_assert(invariant(t));
-    if (!do_telnet_session_print(t, s, "\015\012")) {
+    if (!do_telnet_session_print(t, "", s, "\015\012")) {
+        daemon_assert(invariant(t));
+        return 0;
+    }
+    daemon_assert(invariant(t));
+    return 1;
+}
+
+/* print a line output */
+int telnet_session_println_with_prefix(telnet_session_t *t, 
+                                       const char *prefix, const char *s)
+{
+    daemon_assert(invariant(t));
+    if (!do_telnet_session_print(t, prefix, s, "\015\012")) {
         daemon_assert(invariant(t));
         return 0;
     }

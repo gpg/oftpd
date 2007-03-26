@@ -1,3 +1,12 @@
+2007-03-26  Werner Koch  <wk@g10code.com>
+
+	* src/telnet_session.c (do_telnet_session_print): Add argument S0
+	to act as a prefix.
+	(telnet_session_println_with_prefix): New.
+	(telnet_session_print_with_prefix): New.
+	* src/ftp_session.c: Use the new function.  Allow for CRLF
+	terminated readme files.  Again for some ill behaving firewalls.
+
 2007-03-23  Werner Koch  <wk@g10code.com>
 
 	* configure.ac: Set version to 0.3.7-wk4.

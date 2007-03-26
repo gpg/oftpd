@@ -1808,30 +1808,20 @@ static void send_readme(const ftp_session_t *f, int code)
     sprintf(code_str, "%03d-", code);
 
     /* read and send */
-    read_ret = read(fd, buf, sizeof(buf));
-    if (read_ret > 0) {
-        telnet_session_print(f->telnet_session, code_str);
-        while (read_ret > 0) {
-            p = buf;
-	    len = read_ret;
-            nl = memchr(p, '\n', len);
-	    while ((len > 0) && (nl != NULL)) {
-	        *nl = '\0';
-	        telnet_session_println(f->telnet_session, p);
-	        line_len = nl - p;
-	        len -= line_len + 1;
-	        if (len > 0) {
-	            telnet_session_print(f->telnet_session, code_str);
-                }
-		p = nl+1;
-                nl = memchr(p, '\n', len);
-	    }
-	    if (len > 0) {
-	        telnet_session_print(f->telnet_session, p);
-	    }
-
-            read_ret = read(fd, buf, sizeof(buf));
-        }
+    while ((read_ret = read(fd, buf, sizeof(buf))) > 0) {
+      p = buf;
+      len = read_ret;
+      nl = memchr(p, '\n', len);
+      while ((len > 0) && (nl != NULL)) {
+        *nl = '\0';
+        if (nl > p && nl[-1] == '\r')
+          nl[-1] = '\0';
+        telnet_session_println_with_prefix(f->telnet_session, code_str, p);
+        line_len = nl - p;
+        len -= line_len + 1;
+        p = nl+1;
+        nl = memchr(p, '\n', len);
+      }
     }
 
     /* cleanup and exit */

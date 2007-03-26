@@ -32,7 +32,11 @@ typedef struct {
 /* functions */
 void telnet_session_init(telnet_session_t *t, int in, int out);
 int telnet_session_print(telnet_session_t *t, const char *s);
+int telnet_session_print_with_prefix(telnet_session_t *t,
+                                     const char *prefix, const char *s);
 int telnet_session_println(telnet_session_t *t, const char *s);
+int telnet_session_println_with_prefix(telnet_session_t *t, 
+                                       const char *prefix, const char *s);
 int telnet_session_readln(telnet_session_t *t, char *buf, int buflen);
 void telnet_session_destroy(telnet_session_t *t);
 
