@@ -28,5 +28,11 @@
 /* README file name (sent automatically as a response to users) */
 #define README_FILE_NAME "README"
 
+/* The debug flags control the amount of logging.  */
+extern int debug_flags;
+#define DEBUG_NONE	0
+#define DEBUG_XFER	(1 << 0)
+#define DEBUG_CMDS	(1 << 1)
+
 #endif /* OFTPD_H */
 

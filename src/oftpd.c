@@ -28,6 +28,9 @@ static const char *exe_name = "oftpd";
 int pasv_port_low = 1024;
 int pasv_port_high = MAX_PORT;
 
+/* The debug flags.  */
+int debug_flags;
+
 static void daemonize();
 static void print_usage(const char *error);
 
@@ -170,6 +173,10 @@ int main(int argc, char *argv[])
             } else if (strcmp(argv[i], "-N") == 0 
                        || strcmp(argv[i], "--nodetach") == 0) {
                 detach = 0;
+            } else if (strcmp(argv[i], "-d") == 0
+                       || strcmp(argv[i], "--debug") == 0) { 
+	        /* We just add another flag for each -d option.  */
+	        debug_flags = (debug_flags << 1) | 1;
             } else if (strcmp(argv[i], "-l") == 0
                        || strcmp(argv[i], "--local") == 0) {
                 if (++i >= argc) {

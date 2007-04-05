@@ -268,7 +268,8 @@ void ftp_session_run(ftp_session_t *f, watched_t *watched)
 	    goto next_command;
 	}
 
-        syslog(LOG_DEBUG, "%s %s", f->client_addr_str, buf);
+	if (debug_flags & DEBUG_CMDS)
+	  syslog(LOG_DEBUG, "%s %s", f->client_addr_str, buf);
 
 	/* parse the line */
 	if (!ftp_command_parse(buf, &cmd)) {
@@ -377,7 +378,8 @@ static void reply(ftp_session_t *f, int code, const char *fmt, ...)
     va_end(ap);
 
     /* log our reply */
-    syslog(LOG_DEBUG, "%s %s", f->client_addr_str, buf);
+    if (debug_flags & DEBUG_CMDS)
+      syslog(LOG_DEBUG, "%s %s", f->client_addr_str, buf);
 
     /* send the output to the other side */
     telnet_session_println(f->telnet_session, buf);
@@ -1286,6 +1288,7 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
     }
 
     /* note the transfer */
+#if 0
     syslog(LOG_INFO, 
       "%s retrieved \"%s\", %ld bytes in %ld.%06ld seconds", 
       f->client_addr_str, 
@@ -1293,8 +1296,51 @@ static void do_retr(ftp_session_t *f, const ftp_command_t *cmd)
       file_size,
       (long int) transfer_time.tv_sec,
       (long int) transfer_time.tv_usec);
+#else
+    if (debug_flags & DEBUG_XFER)
+    {
+      char curtime[26];
+      /* For now, always true.  */
+      int complete = 1;
+      char *logline;
+      char *hostp;
+      int host_len;
 
-exit_retr:
+      if (ctime_r (&start_timestamp.tv_sec, curtime) != NULL)
+	/* The result of ctime_r() is newline-terminated.  */
+	curtime[24] = '\0';
+      else
+	strcpy (logline, "(ctime failed)");
+
+      /* Determine the host part of the client address string.  */
+      hostp = strchr (f->client_addr_str, ' ');
+      if (hostp == NULL)
+	host_len = 0;
+      else
+	host_len = hostp - f->client_addr_str;
+
+      /* Timestamp, time (rounded up, so that it is never zero),
+	 remote host, file size, filename, transfer type, special
+	 action flag, direction, access mode, username, service name,
+	 authentication method, authenticated user ID, completion
+	 status.  */
+      if (asprintf (&logline,
+		    "xfer %s %li %.*s %li %s %c _ o a anonymous ftp 0 * %c",
+		    curtime, transfer_time.tv_sec + 1,
+		    host_len, host_len ? f->client_addr_str : "ERROR",
+		    file_size, full_path, 
+		    f->data_type == TYPE_ASCII ? 'a' : 'b', 
+		    complete ? 'c' : 'i') < 0)
+	syslog (LOG_ERR, "asprintf() failed");
+      else
+	{
+	  syslog (LOG_INFO, "%s", logline);
+	  free (logline);
+	}
+    }
+#endif
+
+ exit_retr: {}
     /* Close socket_fd.  */
     pthread_cleanup_pop (1);
     /* Close file_fd.  */
@@ -1382,7 +1428,7 @@ static int open_connection(ftp_session_t *f)
 #endif
     }
 
- leave_oc:
+ leave_oc: {}
     /* Do not close SOCKET_FD here.  */
     pthread_cleanup_pop (0);
     pthread_setcancelstate (state, NULL);
@@ -1825,7 +1871,7 @@ static void send_readme(const ftp_session_t *f, int code)
     }
 
     /* cleanup and exit */
-exit_send_readme:
+ exit_send_readme: {}
     pthread_cleanup_pop (1);
 
     daemon_assert(invariant(f));

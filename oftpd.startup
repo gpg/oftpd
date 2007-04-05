@@ -45,6 +45,8 @@ if [ -n "$MAXCON" ]; then
 	ARGS="-m $MAXCON $ARGS"
 fi
 
+ARGS="$OPTIONS $ARGS"
+
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/sbin/oftpd
 NAME=oftpd
