@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 
-AC_INIT([oftpd], [0.3.7-wk4], [bug-oftpd@g10code.com])
+AC_INIT([oftpd], [0.3.7-wk5], [bug-oftpd@g10code.com])
 AC_CONFIG_SRCDIR(src/file_list.c)
 AM_CONFIG_HEADER(src/config.h)
 AM_INIT_AUTOMAKE
@@ -91,7 +91,11 @@ dnl decipher pthread compilation model
 dnl first, try linking a threaded application with "-pthread", 
 dnl which will work on FreeBSD (and OpenBSD) systems
 save_LDFLAGS="$LDFLAGS"
-LDFLAGS="-pthread $LDFLAGS"
+if test "$GCC" = yes; then
+  LDFLAGS="-pthread -lgcc_s $LDFLAGS"
+else  
+  LDFLAGS="-pthread $LDFLAGS"
+fi
 AC_TRY_LINK([ 
 #include <pthread.h>
 ], [
