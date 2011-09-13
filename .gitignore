@@ -1,0 +1,15 @@
+aclocal.m4
+autom4te.cache/
+configure
+config.h.in
+config.h
+config.log
+config.status
+stamp-h1
+Makefile.in
+Makefile
+.deps/
+
+# Files created by make when not using a VPATH build
+*.o
+src/oftpd

@@ -1,4 +1,6 @@
-$Id$
+oftpd - An anonymous FTP server by Shane Kerr
+
+Note: This is a forked version which is activley maintained and used.
 
 
 Installation
@@ -55,18 +57,18 @@ FreeBSD and is in the FreeBSD ports collection.
 
 
 While I have given up development of oftpd, it's small and reliable.  Don't
-hesitate to e-mail if you have questions or suggestions.  
+hesitate to e-mail if you have questions or suggestions.
 Good luck!
 
 
 Shane Kerr
 shane@time-travellers.org
 
-====== 
+======
 
-Note: For my own purposes I maintain a separate CVS with a slightly
-changed version (well, the one you are currently reading).  As of
-today the Debian version is based upon this one.
+Note: For my own purposes I maintain a separate GIT repository with a
+slightly changed version (well, the one you are currently reading).
+As of today the Debian version is based upon this one.
 
 Werner Koch
 <wk@gnupg.org>
